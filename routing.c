@@ -1,5 +1,4 @@
 #include "routing.h"
-#include <stdio.h>
 
 packed_header PACK_HEADER(unpacked_header uh){
     packed_header ph;
