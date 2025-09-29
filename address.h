@@ -24,6 +24,10 @@ typedef struct {
     unsigned short int size: ADDRESS_BITS;
 } size;
 
+typedef struct {
+    unsigned short address: ADDRESS_BITS;
+} addr;
+
 static unit __table[MAX_TABLE_SIZE] = {0};
 static flags FLAGS = {0};
 static size __table_size = {0};
