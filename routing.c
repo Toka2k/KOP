@@ -11,6 +11,7 @@ packed_header PACK_HEADER(unpacked_header uh){
     ph.addresses[6] = (uh.net_s & 0xff);
     ph.length = uh.length;
     ph.protocol_id = uh.protocol_id;
+    ph.seqnum = ++seqnum;
     return ph; 
 }
 

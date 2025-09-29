@@ -9,6 +9,7 @@ enum Channels{
 };
 
 static double __channels[] = {8670E5, 8672E5, 8674E5, 8676E5, 8678E5, 8680E5};
+static byte seqnum = 0;
 
 typedef struct {
     unsigned short mac_d : 14;
@@ -23,6 +24,7 @@ typedef struct {
     byte addresses[7];
     byte length;
     byte protocol_id;
+    byte seqnum;
 } packed_header; 
 
 typedef struct {
