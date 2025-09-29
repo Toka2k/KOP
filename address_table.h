@@ -1,5 +1,5 @@
-#ifndef ___ADDRESS___
-#define ___ADDRESS___
+#ifndef ___ADDRESS_TABLE___
+#define ___ADDRESS_TABLE___
 
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
 #define tSize __table_size.size
