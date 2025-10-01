@@ -2,6 +2,8 @@
 #define ___ROUTING___
 #include "address_table.h"
 
+#define SECRET_COUNT 1
+
 typedef unsigned char byte;
 
 enum Channels{
@@ -10,6 +12,7 @@ enum Channels{
 
 static double __channels[] = {8670E5, 8672E5, 8674E5, 8676E5, 8678E5, 8680E5};
 static byte seqnum = 0;
+static byte secret[SECRET_COUNT] = {19};
 
 typedef struct {
     unsigned short mac_d : 14;
@@ -18,6 +21,8 @@ typedef struct {
     unsigned short net_s : 14;
     byte length;
     byte protocol_id;
+    byte seqnum;
+    byte hmac[2];
 } unpacked_header;
 
 typedef struct {
@@ -25,17 +30,22 @@ typedef struct {
     byte length;
     byte protocol_id;
     byte seqnum;
+    byte hmac[2];
 } packed_header; 
 
 typedef struct {
     packed_header h;
-    byte data[];
-} packet_data;
+    byte data[255 - sizeof(packed_header)];
+} packet;
 
 static int (*protocols[256])(byte[]) = {
     //function names
 };
 
+// add universal packet send function
+// seqnum will be added and incremented with the send function
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
+unsigned short HASH_PH(packed_header ph);
+unsigned short HASH_UH(unpacked_header uh);
 #endif
