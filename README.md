@@ -14,6 +14,12 @@ Once I get the routing part working the way I want, my next step is to power the
 - Bandwitdth
 - EU Regulations
 
+### Currently working on:
+Designing protocols:
+- Devices Joining the network
+- Devices Deciding on common Channel to use
+- Data Packets
+
 ### Currently finished implementing:
 - Hash function
 - Routing table
@@ -22,8 +28,9 @@ Once I get the routing part working the way I want, my next step is to power the
 Joining network:
 <img width="1220" height="181" alt="Join-Network" src="https://github.com/user-attachments/assets/56cce0eb-5ced-483c-afef-985f808b5c1e" />
 Joining Routing Network:
-<img width="921" height="640" alt="Join-Routing-Network" src="https://github.com/user-attachments/assets/3acf451a-5b07-4e68-8d42-f1e8ba6630af" />
+<img width="914" height="771" alt="Join-Routing-Network" src="https://github.com/user-attachments/assets/58c78975-371b-4d13-ae15-e06b2dea4283" />
 
 Send Data:
 
 <img width="340" height="483" alt="Send-Data" src="https://github.com/user-attachments/assets/ad36591d-eea3-4c7c-acf6-694b309f34f9" />
+
