@@ -15,6 +15,7 @@ packed_header PACK_HEADER(unpacked_header uh){
     unsigned short hash = HASH_PH(ph);
     ph.hmac[0] = (hash & 0xff00) >> 8;
     ph.hmac[1] = hash & 0xff;
+
     return ph; 
 }
 
@@ -62,3 +63,5 @@ unsigned short HASH_UH(unpacked_header uh){
 
     return hash;
 }
+
+

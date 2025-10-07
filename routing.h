@@ -42,8 +42,10 @@ static int (*protocols[256])(byte[]) = {
     //function names
 };
 
-// add universal packet send function
-// seqnum will be added and incremented with the send function
+// Receivers have to track their neighbours last seqnum and they compare onreceive 
+// wether it is higher than the last one and compare the hmac
+// 
+ 
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
 unsigned short HASH_PH(packed_header ph);
