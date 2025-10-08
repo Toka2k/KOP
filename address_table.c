@@ -21,7 +21,7 @@ int check(unit check){
         }
     }
 
-    if (check.cost == 15){
+    if ((check.hcost << 10 | check.cost << 2 | check.lcost) == 15){
         return -4;
     }
 
