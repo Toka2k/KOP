@@ -6,12 +6,18 @@
 #define INDEX_OUT_OF_BOUNDS -1
 #define ADDRESS_BITS 14
 #define RESERVED_ADDRESSES 2
-#define SUCCESS 0
+#define SUCCESS 0 
+
+typedef unsigned char byte;
 
 typedef struct {
-    unsigned int address : ADDRESS_BITS; 
-    unsigned int cost : 4;
-    unsigned int nextHop : ADDRESS_BITS;
+    byte hcost : 2;
+    byte haddress : 6;
+    byte lcost : 2;
+    byte hnextHop : 6;
+    byte cost;
+    byte laddress;
+    byte lnextHop;
 } unit;
 
 typedef struct {
@@ -28,13 +34,10 @@ typedef struct {
     unsigned short address: ADDRESS_BITS;
 } addr;
 
-static unit __table[MAX_TABLE_SIZE] = {0};
-static flags FLAGS = {0};
-static size __table_size = {0};
-static unit __reserved_addresses[] = {
-    {0,0,0},
-    {16383,0,0}
-};
+extern unit __table[MAX_TABLE_SIZE];
+extern flags FLAGS;
+extern size __table_size;
+extern unit __reserved_addresses[];
 
 int check(unit check);
 int _memcmp(const void* buf1, const void* buf2, int count);

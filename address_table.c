@@ -1,14 +1,22 @@
 #include "address_table.h"
 
+//defining important variables and lists
 unit null = {0};
+unit __table[MAX_TABLE_SIZE] = {0};
+flags FLAGS = {0};
+size __table_size = {0};
+unit __reserved_addresses[] = {
+    {0, 0x3f, 0, 0, 0, 0xff, 0},
+    {0, 0, 0, 0, 0, 0, 0}
+};
 
 int check(unit check){
     for(int j = 0; j < RESERVED_ADDRESSES; j++){
         if (_memcmp(&check, &__reserved_addresses[j], sizeof(unit)) == 0){
             return -1;
-        } else if (check.address == __reserved_addresses[j].address){
+        } else if ((check.haddress << 8 | check.laddress) == (__reserved_addresses[j].haddress << 8 | __reserved_addresses[j].laddress)){
             return -2;
-        } else if (check.nextHop == __reserved_addresses[j].address){
+        } else if ((check.hnextHop << 8 | check.lnextHop) == (__reserved_addresses[j].haddress << 8 | __reserved_addresses[j].laddress)){
             return -3;
         }
     }
@@ -39,10 +47,10 @@ int add_unit(unit add){
     }
     
     i = 0;
-    for(; add.address != __table[i].address && _memcmp(&__table[i], &add, sizeof(unit)) && i < tSize; i++){}
+    for(; (add.haddress << 8 | add.laddress) != (__table[i].haddress << 8 | __table[i].laddress) && _memcmp(&__table[i], &add, sizeof(unit)) && i < tSize; i++){}
     if (i == tSize && check(add) == 0){
         __table[tSize++] = add;
-    } else if (FLAGS.UPDATE_WHEN_ADD && i < tSize && add.address == __table[i].address){
+    } else if (FLAGS.UPDATE_WHEN_ADD && i < tSize && (add.haddress << 8 | add.laddress) == (__table[i].haddress << 8 | __table[i].laddress)){
         __table[i] = add;
     }
     return tSize;
@@ -56,12 +64,12 @@ int remove_unit(unit remove){
     
     i = 0;
     if (FLAGS.REMOVE_WITH_ADDRESS){
-        for(; __table[i].address != remove.address && i < tSize; i++){}
+        for(; (__table[i].haddress << 8 | __table[i].laddress) != (remove.haddress << 8 | remove.laddress) && i < tSize; i++){}
     } else if (FLAGS.REMOVE_WITH_NEXTHOP){
-        for(; __table[i].nextHop != remove.nextHop && i < tSize; i++){}
+        for(; (__table[i].hnextHop << 8 | __table[i].lnextHop) != (remove.hnextHop << 8 | remove.lnextHop) && i < tSize; i++){}
     } else if (FLAGS.REMOVE_WITH_NEXTHOP && FLAGS.REMOVE_WITH_ADDRESS){
-        for(;   __table[i].nextHop != remove.nextHop &&\
-                __table[i].address != remove.address &&\
+        for(;   (__table[i].hnextHop << 8 | __table[i].lnextHop) != (remove.hnextHop << 8 | remove.lnextHop) &&\
+                (__table[i].haddress << 8 | __table[i].laddress) != (remove.haddress << 8 | remove.laddress) &&\
                 i < tSize; i++){}
     } else {
         for(; _memcmp(&__table[i], &remove, sizeof(unit)) && i < tSize; i++){}
@@ -79,7 +87,7 @@ int update_unit(unit update){
         return i;
     }
     i = 0;
-    for(; __table[i].address != update.address; i++){}
+    for(; (__table[i].haddress << 8 | __table[i].laddress) != (update.haddress << 8 | update.laddress); i++){}
     __table[i] = update;
 
     return tSize;
@@ -96,10 +104,10 @@ void clear_table(){
 int add_units(int _size, unit* add){
     int i = 0, j = 0;
     for(; i < _size; i++){
-        for(j = 0; add[i].address != __table[j].address && _memcmp(&add[i], &__table[j], sizeof(unit)) && j < tSize; j++){}
+        for(j = 0; (add[i].haddress << 8 | add[i].laddress) != (__table[j].haddress << 8 | __table[j].laddress) && _memcmp(&add[i], &__table[j], sizeof(unit)) && j < tSize; j++){}
         if (j == tSize && check(add[i]) == 0){
             __table[tSize++] = add[i];
-        } else if (FLAGS.UPDATE_WHEN_ADD && j < tSize && add[i].address == __table[j].address){
+        } else if (FLAGS.UPDATE_WHEN_ADD && j < tSize && (add[i].haddress << 8 | add[i].laddress) == (__table[j].haddress << 8 | __table[j].laddress)){
             __table[j] = add[i];
         }
     }
@@ -111,12 +119,12 @@ int remove_units(int _size, unit* remove){
     int i = 0, j = 0;
     for (;i < _size; i++){
         if (FLAGS.REMOVE_WITH_ADDRESS){
-            for(; __table[j].address != remove[i].address && j < tSize; j++){}
+            for(; (__table[j].haddress << 8 | __table[j].laddress) != (remove[i].haddress << 8 | remove[i].laddress) && j < tSize; j++){}
         } else if (FLAGS.REMOVE_WITH_NEXTHOP){
-            for(; __table[j].nextHop != remove[i].nextHop && j < tSize; j++){}
+            for(; (__table[j].hnextHop << 8 | __table[j].lnextHop) != (remove[i].hnextHop << 8 | remove[i].lnextHop) && j < tSize; j++){}
         } else if (FLAGS.REMOVE_WITH_NEXTHOP && FLAGS.REMOVE_WITH_ADDRESS){
-            for(;   __table[j].nextHop != remove[i].nextHop &&\
-                    __table[j].address != remove[i].address &&\
+            for(;   (__table[j].hnextHop << 8 | __table[j].lnextHop) != (remove[i].hnextHop << 8 | remove[i].lnextHop) &&\
+                    (__table[j].haddress << 8 | __table[j].laddress) != (remove[i].haddress << 8 | remove[i].laddress) &&\
                     j < tSize; j++){}
         } else {
             for(j = 0; _memcmp(&remove[i], &__table[j], sizeof(unit)) && j < tSize; j++){}
@@ -132,7 +140,7 @@ int remove_units(int _size, unit* remove){
 int update_units(int _size, unit* update){
     int i = 0, j = 0;
     for(; i < _size; i++){
-        for(j = 0; __table[j].address != update[i].address && j < tSize; j++){}
+        for(j = 0; (__table[j].haddress << 8 | __table[j].laddress) != (update[i].haddress << 8 | update[i].laddress) && j < tSize; j++){}
         if (j < tSize && check(update[i]) == 0){
             __table[j] = update[i];
         }

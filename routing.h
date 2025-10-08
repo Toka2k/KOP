@@ -38,9 +38,7 @@ typedef struct {
     byte data[255 - sizeof(packed_header)];
 } packet;
 
-static int (*protocols[256])(byte[]) = {
-    //function names
-};
+extern int (*protocols[256])(byte[]);
 
 // Receivers have to track their neighbours last seqnum and they compare onreceive 
 // wether it is higher than the last one and compare the hmac

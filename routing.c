@@ -1,5 +1,10 @@
 #include "routing.h"
 
+
+int (*protocols[256])(byte[]) = {
+    // function names separated with , 
+};
+
 packed_header PACK_HEADER(unpacked_header uh){
     packed_header ph;
     ph.addresses[0] = (uh.mac_d & 0x3fc0) >> 6 ;
