@@ -15,8 +15,9 @@ Once I get the routing part working the way I want, my next step is to power the
 - EU Regulations
 
 ### Currently working on:
-- Listen Before Talk
-- DHCP
+- DHCP - address assigning
+- Channel scanning
+- Packet buffering - received and once transmitted
 - Routing
 
 ### Currently finished implementing:
@@ -25,6 +26,7 @@ Once I get the routing part working the way I want, my next step is to power the
 - Sequence numbers implemented in headers
 - onReceive function (handles moving the payload to correct protocol)
 - included RadioLib.h
+- Listen Before Talk
 
 ### Development Diagrams
 
