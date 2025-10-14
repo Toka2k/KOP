@@ -1,6 +1,7 @@
 #ifndef __HARDWARE__
 #define __HARDWARE__
-#include "../address_table/address_table.h"
+
+#include "address_table.h"
 
 #define ERROR (1<<0)
 #define INVALID_HASH (1<<1)
