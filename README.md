@@ -15,14 +15,16 @@ Once I get the routing part working the way I want, my next step is to power the
 - EU Regulations
 
 ### Currently working on:
-Designing protocols:
-- Devices Joining the network
-- Devices Deciding on common Channel to use
-- Data Packets
+- Listen Before Talk
+- DHCP
+- Routing
 
 ### Currently finished implementing:
 - Hash function
 - Routing table
+- Sequence numbers implemented in headers
+- onReceive function (handles moving the payload to correct protocol)
+- included RadioLib.h
 
 ### Development Diagrams
 
