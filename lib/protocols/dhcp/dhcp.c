@@ -21,13 +21,14 @@ int DHCP_LEASE(){
     packed_header ph = PACK_HEADER(uh);
     
     ph.length = 3;
-    byte payload[ph.length] = {0};
+    byte* payload = malloc(ph.length);
     payload[0] = 1;
     *(short *)(payload[1]) = a;
 
     packet p = packet_init(ph, payload);
-    //send(p)
+    sendPacket(p);
 
+    free(payload);
     return 0;
 }
 

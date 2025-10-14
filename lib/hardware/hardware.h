@@ -13,6 +13,7 @@
 #define PACKET_SIZE (sizeof(packed_header) + ph.len)
 
 #define MAX_NEIGHBOURS 256
+#define SECRET_COUNT 1
 
 #define CS 1
 #define IRQ 2
@@ -54,6 +55,8 @@ void sendPacket(packet p);
 packet packet_init(packed_header ph, byte payload[PAYLOAD_SIZE]);
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
+unsigned short HASH_PH(packed_header ph);
+unsigned short HASH_UH(unpacked_header uh);
 
 extern int (*protocols[256])(byte*, byte);
 extern int hw_flags;

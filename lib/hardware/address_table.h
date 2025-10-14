@@ -46,6 +46,10 @@ extern size __table_size;
 extern addr __highest_address;
 extern addr __my_address;
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 int check(unit check);
 int _memcmp(const void* buf1, const void* buf2, int count);
 int add_unit(unit add);
@@ -57,4 +61,7 @@ int remove_units(int _size, unit* toRemove);
 int update_units(int _size, unit* update);
 unit initialize_unit(unsigned short addr, unsigned short cost, unsigned short nextHop);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

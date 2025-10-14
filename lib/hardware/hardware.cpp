@@ -7,9 +7,42 @@ LLCC68 radio = LLCC68(&m);
 
 int hw_flags = 0;
 double __channels[] = {8670E5, 8672E5, 8674E5, 8676E5, 8678E5, 8680E5};
-static byte seqnum[MAX_NEIGHBOURS] = 0;
+static byte seqnum[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnum[MAX_NEIGHBOURS] = {0};
 static addr neighbours[MAX_NEIGHBOURS] = {0};
+
+byte secret[SECRET_COUNT] = {19};
+
+// created multiple hash functions because of the initiallization problems with
+// packet headers.
+unsigned short HASH_PH(packed_header ph){
+    unsigned short hash = 0;
+
+    int i = 0;
+    for(i = 0; i < 7; i++){
+        hash = (hash + ph.addresses[i]) * secret[i % SECRET_COUNT];
+    }
+
+    hash = (hash + ph.length) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + ph.protocol_id) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + ph.seqnum) * secret[i % SECRET_COUNT]; ++i;
+
+    return hash;
+}
+
+unsigned short HASH_UH(unpacked_header uh){
+    unsigned short hash = 0;
+    int i = 0;
+    hash = (hash + uh.mac_d) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.mac_s) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.net_d) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.net_s) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.length) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.protocol_id) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.seqnum) * secret[i % SECRET_COUNT]; ++i;
+
+    return hash;
+}
 
 void OnReceive(void){
     hw_flags = 0;
@@ -35,7 +68,7 @@ void OnReceive(void){
 
     //compare seqnum;
     int i = 0;
-    for(; neighbours[i] != uh.mac_s && i < MAX_NEIGHBOURS; i++){}
+    for(; neighbours[i].address != uh.mac_s && i < MAX_NEIGHBOURS; i++){}
     if (i == MAX_NEIGHBOURS){
         hw_flags |= NOT_NEIGHBOUR;
         return;        
@@ -62,23 +95,23 @@ void sendPacket(packet p){
 
     //increment seqnum;
     int i = 0;
-    for(; neighbours[i] != ((ph.addresses[0] << 6) | (ph.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
+    for(; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
     if (i == MAX_NEIGHBOURS){
         hw_flags |= NOT_NEIGHBOUR;
         return;
     }
 
     seqnum[i]++;
-    p.ph.seqnum = seqnum[i];
+    p.h.seqnum = seqnum[i];
 
     
     //scaning
     while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
-        sleep(randomByte() / 4);
+        sleep(random() % 11);
         return;
     }
 
-    state = radio.transmit((char *)&p);
+    int state = radio.transmit((char *)&p);
     if (state != RADIOLIB_ERR_NONE){
         hw_flags |= ERROR;   
         return;
