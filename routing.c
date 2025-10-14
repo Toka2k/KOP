@@ -1,8 +1,8 @@
 #include "routing.h"
 
 
-int (*protocols[256])(byte[]) = {
-    // function names separated with , 
+int (*protocols[256])(byte[], byte) = {
+    get_address,
 };
 
 packed_header PACK_HEADER(unpacked_header uh){
@@ -51,7 +51,7 @@ unsigned short HASH_PH(packed_header ph){
 
     hash = (hash + ph.length) * secret[i % SECRET_COUNT]; ++i;
     hash = (hash + ph.protocol_id) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + ph.seqnum) * secret[i % SECRET_COUNT];
+    hash = (hash + ph.seqnum) * secret[i % SECRET_COUNT]; ++i;
 
     return hash;
 }
@@ -65,8 +65,78 @@ unsigned short HASH_UH(unpacked_header uh){
     hash = (hash + uh.net_s) * secret[i % SECRET_COUNT]; ++i;
     hash = (hash + uh.length) * secret[i % SECRET_COUNT]; ++i;
     hash = (hash + uh.protocol_id) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.seqnum) * secret[i % SECRET_COUNT]; ++i;
 
     return hash;
 }
 
+packet packet_init(packed_header ph, byte* _payload){
+    ph.seqnum = seqnum;
 
+    packet p = {ph, 0};
+
+    memcpy(p.data, _payload, ph.length);
+
+    return p;
+}
+
+int ask_for_address(){
+    unpacked_header uh = {~0,~0,~0,~0, 0};
+    packed_header ph = PACK_HEADER(uh);
+    
+    ph.length = 0;
+    byte payload[] = {0};
+
+    packet p = packet_init(ph, payload);
+    // send(p);
+
+    return 0;
+}
+
+
+// define onReceive, use it to Auth and Auth
+// use protocols array of fucntions to call and pass
+// payload
+
+int get_neighbours(){
+    return 0;
+}
+
+
+//////////////////
+//  PROTOCOLS   //
+//////////////////
+
+int DHCP_SYNACK(){
+
+    return SUCCESS;
+}
+
+int DHCP_ACK(){
+
+    return SUCCESS;
+}
+
+int DHCP_LEASE(){
+    short int a = 0;
+
+    unpacked_header uh = {~0,~0,~0,~0, 0};
+    packed_header ph = PACK_HEADER(uh);
+    
+    ph.length = 3;
+    byte payload[3] = {0};
+    payload[0] = 1;
+    *(short *)(payload + 1) = a;
+
+    packet p = packet_init(ph, payload);
+    //send(p)
+
+    return SUCCESS;
+}
+
+int DHCP(byte* data, byte length){
+    if(length == 0){
+        return DHCP_LEASE();
+    }
+    return SUCCESS;
+}

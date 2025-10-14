@@ -1,8 +1,11 @@
 #ifndef ___ROUTING___
 #define ___ROUTING___
 #include "address_table.h"
+#include <string.h>
 
 #define SECRET_COUNT 1
+#define PAYLOAD_SIZE (256 - sizeof(packed_header))
+#define PACKET_SIZE (sizeof(packed_header) + ph.len)
 
 typedef unsigned char byte;
 
@@ -35,10 +38,10 @@ typedef struct {
 
 typedef struct {
     packed_header h;
-    byte data[255 - sizeof(packed_header)];
+    byte data[PAYLOAD_SIZE];
 } packet;
 
-extern int (*protocols[256])(byte[]);
+extern int (*protocols[256])(byte*, byte);
 
 // Receivers have to track their neighbours last seqnum and they compare onreceive 
 // wether it is higher than the last one and compare the hmac
@@ -48,4 +51,7 @@ packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
 unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
+packet packet_init(packed_header ph, byte payload[PAYLOAD_SIZE]);
+int ask_for_address();
+int get_address(byte* data, byte length);
 #endif

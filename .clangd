@@ -1,0 +1,10 @@
+CompileFlags:
+  Add: [
+    "-I/home/username/.arduino15/packages/esp32/hardware/esp32/3.2.3/cores/esp32",
+    "-I/home/username/Projects/KOP/libraries/RadioLib/src",
+    "-I/home/username/Projects/KOP/src",
+    "-DARDUINO=10805",
+    "-DARDUINO_ARCH_ESP32",
+    "-DF_CPU=240000000L"
+  ]
+

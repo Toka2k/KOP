@@ -4,6 +4,7 @@
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
 #define tSize __table_size.size
 #define INDEX_OUT_OF_BOUNDS -1
+#define INCORRECT_LENGTH -2
 #define ADDRESS_BITS 14
 #define RESERVED_ADDRESSES 2
 #define SUCCESS 0 
@@ -38,6 +39,7 @@ extern unit __table[MAX_TABLE_SIZE];
 extern flags FLAGS;
 extern size __table_size;
 extern unit __reserved_addresses[];
+extern addr __highest_address;
 
 int check(unit check);
 int _memcmp(const void* buf1, const void* buf2, int count);

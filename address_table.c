@@ -9,6 +9,7 @@ unit __reserved_addresses[] = {
     {0, 0x3f, 0, 0, 0, 0xff, 0},
     {0, 0, 0, 0, 0, 0, 0}
 };
+addr __highest_address = {1};
 
 int check(unit check){
     for(int j = 0; j < RESERVED_ADDRESSES; j++){
