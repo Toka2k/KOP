@@ -74,7 +74,7 @@ void sendPacket(packet p){
     
     //scaning
     while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
-        //lbt
+        sleep(randomByte() / 4);
         return;
     }
 

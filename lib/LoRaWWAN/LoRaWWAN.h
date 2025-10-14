@@ -8,6 +8,7 @@ extern "C" {
 #include "hardware/hardware.h"
 #include "routing/routing.h"
 #include "protocols/protocols.h"
+#include "RadioLib/src/RadioLib.h"
 
 #ifdef __cplusplus
 }

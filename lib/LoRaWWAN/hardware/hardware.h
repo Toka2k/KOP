@@ -1,6 +1,7 @@
 #ifndef __HARDWARE__
 #define __HARDWARE__
 
+#include <Arduino.h>
 #include "address_table.h"
 
 #define ERROR (1<<0)
