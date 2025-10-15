@@ -84,21 +84,20 @@ void OnReceive(void){
 
     byte data[ph.length];
     state = radio.readData(data, ph.length);
-    protocols[ph.protocol_id](data, ph.length);
+    protocols[ph.protocol_id](ph, data, ph.length);
 
     radio.startReceive();
     return;
 }
 
-void sendPacket(packet p){
+int sendPacket(packet p){
     hw_flags = 0;
 
     //increment seqnum;
     int i = 0;
     for(; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
     if (i == MAX_NEIGHBOURS){
-        hw_flags |= NOT_NEIGHBOUR;
-        return;
+        return NOT_NEIGHBOUR;
     }
 
     seqnum[i]++;
@@ -108,14 +107,13 @@ void sendPacket(packet p){
     //scaning
     while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
         sleep(random() % 11);
-        return;
     }
 
     int state = radio.transmit((char *)&p);
     if (state != RADIOLIB_ERR_NONE){
-        hw_flags |= ERROR;   
-        return;
+        return state;
     }
+    return SUCCESS;
 }
 
 packet packet_init(packed_header ph, byte* _payload){

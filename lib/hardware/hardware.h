@@ -51,7 +51,7 @@ enum Channels{
 };
 
 void OnReceive();
-void sendPacket(packet p);
+int sendPacket(packet p);
 packet packet_init(packed_header ph, byte payload[PAYLOAD_SIZE]);
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
