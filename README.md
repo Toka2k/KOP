@@ -16,6 +16,7 @@ Once I get the routing part working the way I want, my next step is to power the
 
 ### Currently working on:
 - DHCP - address assigning
+- DB - DB download, updates
 - Channel scanning
 - Packet buffering - received and once transmitted
 - Routing
