@@ -1,13 +1,9 @@
-#ifndef __HARDWARE__
-#define __HARDWARE__
+#ifndef ___HARDWARE___
+#define ___HARDWARE___
 
 #include <Arduino.h>
 #include "address_table.h"
-
-#define ERROR (1<<0)
-#define INVALID_HASH (1<<1)
-#define INVALID_SEQNUM (1<<2)
-#define NOT_NEIGHBOUR (1<<3)
+#include "definitions.h"
 
 #define PAYLOAD_SIZE (256 - sizeof(packed_header))
 #define PACKET_SIZE (sizeof(packed_header) + ph.len)
@@ -15,12 +11,9 @@
 #define MAX_NEIGHBOURS 256
 #define SECRET_COUNT 1
 
-#define CS 1
-#define IRQ 2
-#define RST 3
-#define GPIO 4
-
-typedef unsigned char byte;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct __attribute__((packed)){
     unsigned short mac_d : 14;
@@ -50,15 +43,20 @@ enum Channels{
     DEFCHANNEL = 0, U1CHANNEL, U2CHANNEL, U3CHANNEL, D1CHANNEL, NET
 };
 
+extern int (*protocols[256])(packed_header, byte*, byte);
+
+#ifdef __cplusplus
+}
+#endif
+
 void OnReceive();
-int sendPacket(packet p);
-packet packet_init(packed_header ph, byte payload[PAYLOAD_SIZE]);
+int send_packet(packet p);
+packet packet_init(packed_header ph, byte* payload);
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
 unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
 
-extern int (*protocols[256])(byte*, byte);
 extern int hw_flags;
 
 #endif

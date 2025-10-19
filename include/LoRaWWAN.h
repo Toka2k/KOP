@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 #include <hardware.h>
-#include <routing.h>
+//#include <routing.h>
 #include <protocols.h>
 
 #ifdef __cplusplus

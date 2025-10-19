@@ -90,7 +90,7 @@ void OnReceive(void){
     return;
 }
 
-int sendPacket(packet p){
+int send_packet(packet p){
     hw_flags = 0;
 
     //increment seqnum;

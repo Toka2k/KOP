@@ -14,6 +14,9 @@
 /*#if defined(ESP8266) || defined(ESP32)
     ICACHE_RAM_ATTR
 #endif*/
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 typedef unsigned char byte;
 
@@ -45,10 +48,6 @@ extern flags FLAGS;
 extern size __table_size;
 extern addr __highest_address;
 extern addr __my_address;
-
-#ifdef __cplusplus
-extern "C"{
-#endif
 
 int check(unit check);
 int _memcmp(const void* buf1, const void* buf2, int count);
