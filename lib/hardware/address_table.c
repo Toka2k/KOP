@@ -6,7 +6,7 @@ static unit __table[MAX_TABLE_SIZE] = {0};
 flags FLAGS = {0};
 size __table_size = {0};
 static unit __reserved_addresses[] = {
-    {0, 0b111111, 0, 0, 0, 0xff, 0},
+    {0, 0x3f, 0, 0, 0, 0xff, 0},
     {0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -163,4 +163,17 @@ unit initialize_unit(unsigned short addr, unsigned short cost, unsigned short ne
     u.hnextHop = (nextHop & 0x3f00) >> 8;
     u.lnextHop = nextHop & 0xff;
     return u;
+}
+
+unit find_unit(addr address){
+    unit result = {0};
+    int i = 0;    
+
+    for (; address.address != (__table[i].haddress << 8 | __table[i].laddress) && i < tSize; i++){}
+
+    if(i < tSize){
+        result = __table[i];
+    }
+    
+    return result;
 }

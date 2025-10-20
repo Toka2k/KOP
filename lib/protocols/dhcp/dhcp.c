@@ -10,8 +10,12 @@ int DHCP_REQ(){
     byte payload[] = {req_random, 0};
 
     packet p = packet_init(ph, payload);
+
     int state = send_packet(p);
-    return state;
+    if (state != RADIOLIB_ERR_NONE){
+        return state;
+    }
+    return SUCCESS;
 }
 
 int DHCP_OFFER(byte* data){
@@ -35,7 +39,11 @@ int DHCP_OFFER(byte* data){
     payload[3] = a & 0xff;
 
     packet p = packet_init(ph, payload);
-    send_packet(p);
+    
+    int state = send_packet(p);
+    if (state != RADIOLIB_ERR_NONE){
+        return state;
+    }
 
     free(payload);
     return SUCCESS;
@@ -64,7 +72,11 @@ int DHCP_ACK(packed_header ph, byte* data, byte length){
     byte send_data[] = {req_random, 2};
 
     packet p = packet_init(ph, send_data);
-    send_packet(p);
+    
+    int state = send_packet(p);
+    if (state != RADIOLIB_ERR_NONE){
+        return state;
+    }
 
     return SUCCESS;
 }
@@ -84,7 +96,11 @@ int DHCP_FIN(packed_header ph, byte* data, byte length){
     byte _data[] = {off_random, 3};
     
     packet p = packet_init(send, _data);
-    send_packet(p);
+    
+    int state = send_packet(p);
+    if (state != RADIOLIB_ERR_NONE){
+        return state;
+    }
 
     off_random = 0;
 

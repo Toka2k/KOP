@@ -59,6 +59,7 @@ int add_units(int _size, unit* add);
 int remove_units(int _size, unit* toRemove);
 int update_units(int _size, unit* update);
 unit initialize_unit(unsigned short addr, unsigned short cost, unsigned short nextHop);
+unit find_unit(addr address);
 
 #ifdef __cplusplus
 }
