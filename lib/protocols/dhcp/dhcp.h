@@ -1,11 +1,6 @@
 #ifndef ___DHCP___
 #define ___DHCP___
 
-#define P_RIP   (0x0)
-#define P_ARP   (0x1)
-#define P_DB    (0x2)
-#define P_DHCP  (0x3)
-
 #include "../../hardware/hardware.h"
 #include "../../hardware/definitions.h"
 

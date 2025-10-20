@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "address_table.h"
 #include "definitions.h"
+#include "../RadioLib/src/TypeDef.h"
 
 #define PAYLOAD_SIZE (256 - sizeof(packed_header))
 #define PACKET_SIZE (sizeof(packed_header) + ph.len)

@@ -5,13 +5,17 @@ int ROUTING(packed_header ph, byte* data, byte length){
     addr net_d = {received_uh.net_d};
 
     unit node = find_unit(net_d);
-    if((node.haddress << 8 | node.laddress) == 0 || (node.hcost << 10 | node.cost << 2 | node.lcost) == 0 || (node.hnextHop << 8 | node.lnextHop) == 0){
+    if ((node.haddress << 8 | node.laddress) == 0 || (node.hcost << 10 | node.cost << 2 | node.lcost) == 0 || (node.hnextHop << 8 | node.lnextHop) == 0){
         return ERROR;
     }
 
     unpacked_header send_uh = received_uh;
     send_uh.mac_s = __my_address.address;
-    send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
+    if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
+        send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
+    } else {
+        send_uh.mac_d = send_uh.net_d;
+    }
 
     packed_header send_ph = PACK_HEADER(send_uh);
     packet p = packet_init(ph, data);
