@@ -85,6 +85,9 @@ int DHCP_FIN(packed_header ph, byte* data, byte length){
     
     packet p = packet_init(send, _data);
     send_packet(p);
+
+    off_random = 0;
+
     return SUCCESS;
 }
 
@@ -92,6 +95,8 @@ int DHCP_ACC(packed_header ph){
     clear_table();
 
     add_unit(initialize_unit(__my_address.address, 0, __my_address.address));
+
+    req_random = 0;
 
     return SUCCESS;    
 }
@@ -105,6 +110,7 @@ int DHCP(packed_header ph, byte* data, byte length){
     if(off_random != *data || req_random != *data){
         return ERROR;
     }
+
     if (*(data + 1) == 0){
         return DHCP_OFFER(data);
     } else if (*(data + 1) == 1){
