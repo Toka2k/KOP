@@ -55,7 +55,7 @@ void OnReceive(void){
     }
 
     unpacked_header uh = UNPACK_HEADER(ph);
-    if (uh.mac_d != 0xcfff || uh.mac_d != __my_address.address){
+    if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
         radio.finishReceive();
     } 
 
@@ -84,6 +84,9 @@ void OnReceive(void){
 
     byte data[ph.length];
     state = radio.readData(data, ph.length);
+    if (((ph.addresses[3] & 0xf) << 10 | ph.addresses[4] << 2 |  (ph.addresses[5] & 0xc0) >> 6) == __my_address.address){
+
+    }
     protocols[ph.protocol_id](ph, data, ph.length);
 
     radio.startReceive();

@@ -15,7 +15,13 @@ Once I get the routing part working the way I want, my next step is to power the
 - EU Regulations
 
 ### Currently working on:
-- Testing Routing and DHCP
+- DHCP DENY
+- only one dhcp req at a time
+
+### To do:
+- better address assigning
+- ARP
+- get neighbours
 - DB - DB download, updates
 - Channel scanning
 - Packet buffering - received and once transmitted
