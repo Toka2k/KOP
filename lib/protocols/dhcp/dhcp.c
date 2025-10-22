@@ -88,6 +88,11 @@ int DHCP_FIN(packed_header ph, byte* data, byte length){
     // add to DB
     addr leased_address = {(*(data + 1) << 8 | *(data + 2))};
     add_unit(initialize_unit(leased_address.address, 1, __my_address.address));
+    if (HASH_PH(ph) != *(unsigned short*)ph.hmac){
+        routers[leased_address.address / 8] |= 1 << (leased_address.address % 8);
+    } else {
+        routers[leased_address.address / 8] &= ~(1 << (leased_address.address % 8));
+    }
 
     send_fin.length = 2;
     send_fin.protocol_id = P_DHCP;
@@ -117,13 +122,29 @@ int DHCP_ACC(packed_header ph){
     return SUCCESS;    
 }
 
+int DHCP_DENY(){
+    unpacked_header uh = {~0, __my_address.address, ~0, __my_address.address, 2, P_DHCP, 0};
+    packed_header ph = PACK_HEADER(uh);
+
+    byte data[2] = {off_random, 4};
+
+    off_random = 0;
+    req_random = 0;
+
+    packet p = packet_init(ph, data);
+    send_packet(p);
+
+    return SUCCESS;
+}
+
 int DHCP(packed_header ph, byte* data, byte length){
     // Add some flag to prevent multiple dhcp requests to interfere
-    if(length < 1){
+    // add some checks to see wether we sent dhcp req
+    if (length < 1){
         return ERROR;
     }
 
-    if(off_random != *data || req_random != *data){
+    if (off_random != *data || req_random != *data){
         return ERROR;
     }
 
@@ -135,6 +156,9 @@ int DHCP(packed_header ph, byte* data, byte length){
         return DHCP_FIN(ph, data, length);
     } else if (*(data + 1) == 3){
         return DHCP_ACC(ph);
-    } // add option to decline the lease for example off_random + 10 would be 
+    } else if (*(data + 1) == 4){
+        return DHCP_DENY();
+    }
+
     return SUCCESS;
 }

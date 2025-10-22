@@ -57,6 +57,7 @@ packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
 unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
+int ROUTING(packed_header ph, byte* data, byte length);
 
 extern int hw_flags;
 

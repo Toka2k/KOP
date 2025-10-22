@@ -9,6 +9,7 @@ static unit __reserved_addresses[] = {
     {0, 0x3f, 0, 0, 0, 0xff, 0},
     {0, 0, 0, 0, 0, 0, 0}
 };
+int routers[1 << (ADDRESS_BITS - 5)] = {0};
 
 // MANAGE HIGHEST ADDRESS WITH DHCP
 addr __highest_address = {1};

@@ -11,7 +11,9 @@ static byte seqnum[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnum[MAX_NEIGHBOURS] = {0};
 static addr neighbours[MAX_NEIGHBOURS] = {0};
 
-byte secret[SECRET_COUNT] = {19};
+// First set of magic numbers, is for hosts
+// Second set of magic numbers, is for routers
+byte secret[2][SECRET_COUNT] = {{19},{11}};
 
 // created multiple hash functions because of the initiallization problems with
 // packet headers.
@@ -20,12 +22,12 @@ unsigned short HASH_PH(packed_header ph){
 
     int i = 0;
     for(i = 0; i < 7; i++){
-        hash = (hash + ph.addresses[i]) * secret[i % SECRET_COUNT];
+        hash = (hash + ph.addresses[i]) * secret[(routers[(ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) / 32] & (1 << (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8)) >> (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8][i % SECRET_COUNT];
     }
 
-    hash = (hash + ph.length) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + ph.protocol_id) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + ph.seqnum) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + ph.length) * secret[(routers[(ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) / 32] & (1 << (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8)) >> (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8][i % SECRET_COUNT]; ++i;
+    hash = (hash + ph.protocol_id) * secret[(routers[(ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) / 32] & (1 << (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8)) >> (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8][i % SECRET_COUNT]; ++i;
+    hash = (hash + ph.seqnum) * secret[(routers[(ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) / 32] & (1 << (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8)) >> (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8][i % SECRET_COUNT]; ++i;
 
     return hash;
 }
@@ -33,13 +35,13 @@ unsigned short HASH_PH(packed_header ph){
 unsigned short HASH_UH(unpacked_header uh){
     unsigned short hash = 0;
     int i = 0;
-    hash = (hash + uh.mac_d) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + uh.mac_s) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + uh.net_d) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + uh.net_s) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + uh.length) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + uh.protocol_id) * secret[i % SECRET_COUNT]; ++i;
-    hash = (hash + uh.seqnum) * secret[i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.mac_d) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.mac_s) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.net_d) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.net_s) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.length) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.protocol_id) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
+    hash = (hash + uh.seqnum) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
 
     return hash;
 }
@@ -50,6 +52,7 @@ void OnReceive(void){
     int state = radio.readData((byte*)&ph, sizeof(packed_header));
     if (state != RADIOLIB_ERR_NONE){
         hw_flags |= ERROR;
+        radio.finishReceive();
         radio.startReceive();
         return;
     }
@@ -57,12 +60,15 @@ void OnReceive(void){
     unpacked_header uh = UNPACK_HEADER(ph);
     if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
         radio.finishReceive();
+        radio.startReceive();
+        return;
     } 
 
     //compare hmac
     if (*(unsigned short*)ph.hmac != HASH_PH(ph)){
         hw_flags |= INVALID_HASH; 
         radio.finishReceive();
+        radio.startReceive();
         return;
     }
 
@@ -71,7 +77,9 @@ void OnReceive(void){
     for(; neighbours[i].address != uh.mac_s && i < MAX_NEIGHBOURS; i++){}
     if (i == MAX_NEIGHBOURS){
         hw_flags |= NOT_NEIGHBOUR;
-        return;        
+        radio.finishReceive();
+        radio.startReceive();
+        return; 
     }
 
     if (neighbour_seqnum[i] == ph.seqnum){
@@ -79,15 +87,18 @@ void OnReceive(void){
     } else {
         hw_flags |= INVALID_SEQNUM;
         radio.finishReceive();
+        radio.startReceive();
         return;
     }
 
     byte data[ph.length];
     state = radio.readData(data, ph.length);
-    if (((ph.addresses[3] & 0xf) << 10 | ph.addresses[4] << 2 |  (ph.addresses[5] & 0xc0) >> 6) == __my_address.address){
-
+ 
+    if(uh.net_d != __my_address.address){
+        ROUTING(ph, data, ph.length);
+    } else {
+        protocols[ph.protocol_id](ph, data, ph.length);
     }
-    protocols[ph.protocol_id](ph, data, ph.length);
 
     radio.startReceive();
     return;
@@ -106,6 +117,8 @@ int send_packet(packet p){
     seqnum[i]++;
     p.h.seqnum = seqnum[i];
 
+    //calculate HMAC
+    *(unsigned short*)p.h.hmac = HASH_PH(p.h);
     
     //scaning
     while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
@@ -122,7 +135,9 @@ int send_packet(packet p){
 packet packet_init(packed_header ph, byte* _payload){
     packet p = {ph, 0};
 
-    memcpy(p.data, _payload, ph.length);
+    if (_payload != NULL){
+        memcpy(p.data, _payload, ph.length);
+    }
 
     return p;
 }
@@ -159,4 +174,33 @@ unpacked_header UNPACK_HEADER(packed_header ph){
     uh.hmac[1] = ph.hmac[1];
 
     return uh;
+}
+
+int ROUTING(packed_header ph, byte* data, byte length){
+    unpacked_header received_uh = UNPACK_HEADER(ph);
+    addr net_d = {received_uh.net_d};
+
+    unit node = find_unit(net_d);
+    int state = 0;
+    if ((state = check(node)) == SUCCESS){
+        return state;
+    }
+
+    unpacked_header send_uh = received_uh;
+    send_uh.mac_s = __my_address.address;
+    if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
+        send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
+    } else {
+        send_uh.mac_d = send_uh.net_d;
+    }
+
+    packed_header send_ph = PACK_HEADER(send_uh);
+    packet p = packet_init(ph, data);
+
+    state = send_packet(p);
+    if (state != RADIOLIB_ERR_NONE){
+        return state;
+    }
+
+    return SUCCESS;
 }

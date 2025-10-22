@@ -48,6 +48,7 @@ extern flags FLAGS;
 extern size __table_size;
 extern addr __highest_address;
 extern addr __my_address;
+extern int routers[1 << (ADDRESS_BITS - 5)];
 
 int check(unit check);
 int _memcmp(const void* buf1, const void* buf2, int count);

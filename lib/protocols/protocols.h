@@ -5,7 +5,6 @@
 #include "../hardware/address_table.h"
 
 #include "dhcp/dhcp.h"
-#include "routing/routing.h"
 
 #ifdef __cplusplus
 extern "C" {

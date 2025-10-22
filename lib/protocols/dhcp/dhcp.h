@@ -13,6 +13,7 @@ int DHCP_OFFER(byte* data);
 int DHCP_ACK(packed_header ph, byte* data, byte length);
 int DHCP_FIN(packed_header ph, byte* data, byte length);
 int DHCP_ACC(packed_header ph);
+int DHCP_DENY();
 int DHCP(packed_header ph, byte* data, byte length);
 
 #ifdef __cplusplus

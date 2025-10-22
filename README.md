@@ -16,6 +16,8 @@ Once I get the routing part working the way I want, my next step is to power the
 
 ### Currently working on:
 - DHCP DENY
+- route deny
+- differentiating routers from hosts
 - only one dhcp req at a time
 
 ### To do:
