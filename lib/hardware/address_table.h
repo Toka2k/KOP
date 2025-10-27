@@ -1,12 +1,10 @@
 #ifndef ___ADDRESS_TABLE___
 #define ___ADDRESS_TABLE___
 
-#define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
+#include "definitions.h"
+
 #define tSize __table_size.size
-#define INDEX_OUT_OF_BOUNDS -1
-#define INCORRECT_LENGTH -2
-#define ADDRESS_BITS 14
-#define RESERVED_ADDRESSES 2
+
 
 // If ICACHE_RAM_ATTR is defeined this function will be placed in instruction ram which is used
 // for time sensitivie functions

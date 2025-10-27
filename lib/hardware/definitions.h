@@ -23,4 +23,15 @@
 #define P_ARP   (0x1)
 #define P_DB    (0x2)
 #define P_DHCP  (0x3)
+
+#define MAX_NEIGHBOURS 256
+#define PAYLOAD_SIZE (256 - sizeof(packed_header))
+#define PACKET_SIZE (sizeof(packed_header) + ph.len)
+
+#define ADDRESS_BITS 14
+#define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
+
+#define INDEX_OUT_OF_BOUNDS -1
+#define INCORRECT_LENGTH -2
+#define RESERVED_ADDRESSES 2
 #endif

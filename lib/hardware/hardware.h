@@ -5,10 +5,6 @@
 #include "address_table.h"
 #include "definitions.h"
 
-#define PAYLOAD_SIZE (256 - sizeof(packed_header))
-#define PACKET_SIZE (sizeof(packed_header) + ph.len)
-
-#define MAX_NEIGHBOURS 256
 #define SECRET_COUNT 1
 
 #ifdef __cplusplus
