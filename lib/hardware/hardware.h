@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include "address_table.h"
 #include "definitions.h"
-#include "../RadioLib/src/TypeDef.h"
 
 #define PAYLOAD_SIZE (256 - sizeof(packed_header))
 #define PACKET_SIZE (sizeof(packed_header) + ph.len)
@@ -50,8 +49,9 @@ extern int (*protocols[256])(packed_header, byte*, byte);
 }
 #endif
 
+int get_hw_flags();
 void OnReceive();
-int send_packet(packet p);
+void send_packet(packet p);
 packet packet_init(packed_header ph, byte* payload);
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
@@ -59,6 +59,5 @@ unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
 int ROUTING(packed_header ph, byte* data, byte length);
 
-extern int hw_flags;
 
 #endif

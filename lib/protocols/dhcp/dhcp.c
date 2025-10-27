@@ -11,9 +11,10 @@ int DHCP_REQ(){
 
     packet p = packet_init(ph, payload);
 
-    int state = send_packet(p);
-    if (state != RADIOLIB_ERR_NONE){
-        return state;
+    send_packet(p);
+    int flags;
+    if (flags = get_hw_flags() != SUCCESS){
+        return flags;
     }
     return SUCCESS;
 }
@@ -30,6 +31,10 @@ int DHCP_OFFER(byte* data){
     ph.length = 4;
     byte* payload = malloc(ph.length);
 
+    if (payload == NULL){
+        return NULL_POINTER;
+    }
+
     // first byte is temp identifier of device requesting
     // second byte is identifier of dhcp message
     payload[0] = off_random;
@@ -40,12 +45,15 @@ int DHCP_OFFER(byte* data){
 
     packet p = packet_init(ph, payload);
     
-    int state = send_packet(p);
-    if (state != RADIOLIB_ERR_NONE){
-        return state;
-    }
+    send_packet(p);
 
     free(payload);
+
+    int flags;
+    if (flags = get_hw_flags != SUCCESS){
+        return flags;
+    }
+
     return SUCCESS;
 }
 
@@ -73,9 +81,10 @@ int DHCP_ACK(packed_header ph, byte* data, byte length){
 
     packet p = packet_init(ph, send_data);
     
-    int state = send_packet(p);
-    if (state != RADIOLIB_ERR_NONE){
-        return state;
+    send_packet(p);
+    int flags;
+    if (flags = get_hw_flags() != SUCCESS){
+        return flags;
     }
 
     return SUCCESS;
@@ -101,10 +110,12 @@ int DHCP_FIN(packed_header ph, byte* data, byte length){
     byte _data[] = {off_random, 3};
     
     packet p = packet_init(send, _data);
-    
-    int state = send_packet(p);
-    if (state != RADIOLIB_ERR_NONE){
-        return state;
+
+    send_packet(p);
+
+    int flags;
+    if (flags = get_hw_flags() != SUCCESS){
+        return flags;
     }
 
     off_random = 0;
@@ -126,7 +137,12 @@ int DHCP_DENY(){
     unpacked_header uh = {~0, __my_address.address, ~0, __my_address.address, 2, P_DHCP, 0};
     packed_header ph = PACK_HEADER(uh);
 
-    byte data[2] = {off_random, 4};
+    byte data[2] = {0, 4};
+    if (off_random){
+        data[0] = off_random;
+    } else {
+        data[0] = req_random;
+    }
 
     off_random = 0;
     req_random = 0;
@@ -134,14 +150,23 @@ int DHCP_DENY(){
     packet p = packet_init(ph, data);
     send_packet(p);
 
+    int flags;
+    if (flags = get_hw_flags() != SUCCESS){
+        return flags;
+    }
+
     return SUCCESS;
 }
 
 int DHCP(packed_header ph, byte* data, byte length){
     // Add some flag to prevent multiple dhcp requests to interfere
     // add some checks to see wether we sent dhcp req
+    if (data == NULL){
+        return NULL_POINTER;
+    }
+
     if (length < 1){
-        return ERROR;
+        return INVALID_LENGTH;
     }
 
     if (off_random != *data || req_random != *data){

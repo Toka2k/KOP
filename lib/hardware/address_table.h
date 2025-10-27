@@ -7,7 +7,6 @@
 #define INCORRECT_LENGTH -2
 #define ADDRESS_BITS 14
 #define RESERVED_ADDRESSES 2
-#define SUCCESS 0 
 
 // If ICACHE_RAM_ATTR is defeined this function will be placed in instruction ram which is used
 // for time sensitivie functions

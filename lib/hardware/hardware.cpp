@@ -5,7 +5,7 @@
 Module m = Module(CS, IRQ, RST, GPIO);
 LLCC68 radio = LLCC68(&m);
 
-int hw_flags = 0;
+static int hw_flags = 0;
 double __channels[] = {8670E5, 8672E5, 8674E5, 8676E5, 8678E5, 8680E5};
 static byte seqnum[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnum[MAX_NEIGHBOURS] = {0};
@@ -44,6 +44,10 @@ unsigned short HASH_UH(unpacked_header uh){
     hash = (hash + uh.seqnum) * secret[(routers[uh.mac_s / 32] & (1 << uh.mac_s % 32)) >> uh.mac_s % 32][i % SECRET_COUNT]; ++i;
 
     return hash;
+}
+
+int get_hw_flags(){
+    return hw_flags;
 }
 
 void OnReceive(void){
@@ -94,7 +98,7 @@ void OnReceive(void){
     byte data[ph.length];
     state = radio.readData(data, ph.length);
  
-    if(uh.net_d != __my_address.address){
+    if (uh.net_d != __my_address.address){
         ROUTING(ph, data, ph.length);
     } else {
         protocols[ph.protocol_id](ph, data, ph.length);
@@ -104,14 +108,15 @@ void OnReceive(void){
     return;
 }
 
-int send_packet(packet p){
+void send_packet(packet p){
     hw_flags = 0;
 
     //increment seqnum;
     int i = 0;
     for(; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
     if (i == MAX_NEIGHBOURS){
-        return NOT_NEIGHBOUR;
+        hw_flags |= NOT_NEIGHBOUR;
+        return;
     }
 
     seqnum[i]++;
@@ -127,9 +132,10 @@ int send_packet(packet p){
 
     int state = radio.transmit((char *)&p);
     if (state != RADIOLIB_ERR_NONE){
-        return state;
+        hw_flags |= ERROR;
+        return;
     }
-    return SUCCESS;
+    return;
 }
 
 packet packet_init(packed_header ph, byte* _payload){
@@ -181,9 +187,9 @@ int ROUTING(packed_header ph, byte* data, byte length){
     addr net_d = {received_uh.net_d};
 
     unit node = find_unit(net_d);
-    int state = 0;
-    if ((state = check(node)) == SUCCESS){
-        return state;
+    if ((check(node)) != SUCCESS){
+        hw_flags |= INVALID_ADDRESS;
+        return hw_flags;
     }
 
     unpacked_header send_uh = received_uh;
@@ -197,10 +203,12 @@ int ROUTING(packed_header ph, byte* data, byte length){
     packed_header send_ph = PACK_HEADER(send_uh);
     packet p = packet_init(ph, data);
 
-    state = send_packet(p);
-    if (state != RADIOLIB_ERR_NONE){
-        return state;
+    send_packet(p);
+    if (hw_flags != SUCCESS){
+        return hw_flags;
     }
 
-    return SUCCESS;
+    hw_flags &= SUCCESS;
+
+    return hw_flags;
 }

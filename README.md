@@ -15,18 +15,14 @@ Once I get the routing part working the way I want, my next step is to power the
 - EU Regulations
 
 ### Currently working on:
-- DHCP DENY
-- route deny
-- differentiating routers from hosts
-- only one dhcp req at a time
+- better address assigning
+- Packet buffering 
 
 ### To do:
-- better address assigning
 - ARP
 - get neighbours
 - DB - DB download, updates
 - Channel scanning
-- Packet buffering - received and once transmitted
 
 ### Currently finished implementing:
 - Hash function
@@ -37,6 +33,7 @@ Once I get the routing part working the way I want, my next step is to power the
 - Listen Before Talk
 - Routing
 - DHCP - address assigning
+- only one dhcp req at a time
 
 ### Development Diagrams
 
