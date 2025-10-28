@@ -3,6 +3,15 @@
 static int req_random = 0;
 static int off_random = 0;
 
+short int get_unused_address(short int address){
+    addr a = {address};
+    if(find_unit(a) == 0){
+        return address;
+    }; 
+
+    for(int i = __highest_address.address; i < MAX_TABLE_SIZE && find_unit(__highest_address) == null; i++){}
+}
+
 int DHCP_REQ(){
     req_random = random() & 0xff;
     packed_header ph = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, 2, P_DHCP, 0};
@@ -20,9 +29,7 @@ int DHCP_REQ(){
 }
 
 int DHCP_OFFER(byte* data){
-    // better algorithm for choosing addresses
-    short int a = __highest_address.address++;
-
+    short int a = get_unused_address(__highest_address.address);
     // PING THE ADDRESS, if we get response, we choose different address
 
     unpacked_header uh = {~0, __my_address.address, ~0, __my_address.address, 0};
