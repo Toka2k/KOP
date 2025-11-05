@@ -84,10 +84,13 @@ int remove_unit(unit remove){
     } else {
         for(; _memcmp(&__table[i], &remove, sizeof(unit)) && i < tSize; i++){}
     }
+
     if (i < tSize){
         __table[i] = __table[--tSize];
         __table[tSize] = null; 
     }
+    qsort(__table, tSize, sizeof(unit), cmp_unit);
+
     return tSize;
 }
 
@@ -122,6 +125,8 @@ int add_units(int _size, unit* add){
         }
     }
 
+    qsort(__table, tSize, sizeof(unit), cmp_unit);
+
     return tSize;
 }
 
@@ -143,6 +148,8 @@ int remove_units(int _size, unit* remove){
             __table[tSize] = null;
         }
     }
+
+    qsort(__table, tSize, sizeof(unit), cmp_unit);
 
     return tSize;
 }
