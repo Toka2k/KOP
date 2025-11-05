@@ -6,7 +6,7 @@ Module m = Module(CS, IRQ, RST, GPIO);
 LLCC68 radio = LLCC68(&m);
 
 static int hw_flags = 0;
-double __channels[] = {8670E5, 8672E5, 8674E5, 8676E5, 8678E5, 8680E5};
+double __channels[] = {8680E5};
 static byte seqnum[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnum[MAX_NEIGHBOURS] = {0};
 static addr neighbours[MAX_NEIGHBOURS] = {0};
@@ -123,8 +123,9 @@ void send_packet(packet p){
     p.h.seqnum = seqnum[i];
 
     //calculate HMAC
-    *(unsigned short*)p.h.hmac = HASH_PH(p.h);
-    
+    int hmac = HASH_PH(p.h);
+    p.h.hmac[0] = (hmac & 0xff00) >> 8;
+    p.h.hmac[1] = hmac & 0xff;
     //scaning
     while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
         sleep(random() % 11);

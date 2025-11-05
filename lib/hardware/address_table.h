@@ -2,6 +2,7 @@
 #define ___ADDRESS_TABLE___
 
 #include "definitions.h"
+#include <stdlib.h>
 
 #define tSize __table_size.size
 
@@ -41,6 +42,7 @@ typedef struct __attribute__((packed)){
     unsigned short address: ADDRESS_BITS;
 } addr;
 
+extern unit null;
 extern flags FLAGS;
 extern size __table_size;
 extern addr __highest_address;

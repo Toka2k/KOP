@@ -5,11 +5,17 @@ static int off_random = 0;
 
 short int get_unused_address(short int address){
     addr a = {address};
-    if(find_unit(a) == 0){
+    unit result = find_unit(a);
+    if(_memcmp(&result, &null, sizeof(unit))){
         return address;
     }; 
 
-    for(int i = __highest_address.address; i < MAX_TABLE_SIZE && find_unit(__highest_address) == null; i++){}
+    for(short int i = __highest_address.address; i < MAX_TABLE_SIZE; i++){
+        result = find_unit(__highest_address);
+        if(_memcmp(&result, &null, sizeof(unit)) == 0){
+            return __highest_address.address = i;
+        }
+    }
 }
 
 int DHCP_REQ(){
@@ -157,11 +163,23 @@ int DHCP_DENY(){
     packet p = packet_init(ph, data);
     send_packet(p);
 
+    DHCP_DROP();
+
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
         return flags;
     }
 
+    return SUCCESS;
+}
+
+int DHCP_DROP(){
+    if(req_random != 0){
+        __my_address.address = 0;
+        req_random = 0;
+    } else if(off_random != 0){
+        off_random = 0;
+    }
     return SUCCESS;
 }
 
@@ -189,7 +207,7 @@ int DHCP(packed_header ph, byte* data, byte length){
     } else if (*(data + 1) == 3){
         return DHCP_ACC(ph);
     } else if (*(data + 1) == 4){
-        return DHCP_DENY();
+        return DHCP_DROP();
     }
 
     return SUCCESS;

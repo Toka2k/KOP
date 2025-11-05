@@ -15,6 +15,10 @@ int routers[1 << (ADDRESS_BITS - 5)] = {0};
 addr __highest_address = {1};
 addr __my_address = {0};
 
+int cmp_unit(const void* a, const void* b){
+    return ((*(unit*)a).haddress | (*(unit*)a).laddress) - ((*(unit*)b).haddress | (*(unit*)b).laddress);
+}
+
 int check(unit check){
     for(int j = 0; j < RESERVED_ADDRESSES; j++){
         if (_memcmp(&check, &__reserved_addresses[j], sizeof(unit)) == 0){
@@ -55,6 +59,7 @@ int add_unit(unit add){
     for(; (add.haddress << 8 | add.laddress) != (__table[i].haddress << 8 | __table[i].laddress) && _memcmp(&__table[i], &add, sizeof(unit)) && i < tSize; i++){}
     if (i == tSize && check(add) == 0){
         __table[tSize++] = add;
+        qsort(__table, tSize, sizeof(unit), cmp_unit);
     } else if (FLAGS.UPDATE_WHEN_ADD && i < tSize && (add.haddress << 8 | add.laddress) == (__table[i].haddress << 8 | __table[i].laddress)){
         __table[i] = add;
     }
@@ -167,14 +172,19 @@ unit initialize_unit(unsigned short addr, unsigned short cost, unsigned short ne
 }
 
 unit find_unit(addr address){
-    unit result = {0};
-    int i = 0;    
+    int low = 0, high = tSize - 1;
 
-    for (; address.address != (__table[i].haddress << 8 | __table[i].laddress) && i < tSize; i++){}
-
-    if(i < tSize){
-        result = __table[i];
+    while (low <= high) {
+        int mid = (low + high) / 2;
+        if ((__table[mid].haddress << 8 | __table[mid].laddress) == address.address)
+            return __table[mid];
+        else if ((__table[mid].haddress << 8 | __table[mid].laddress) < address.address){
+            low = mid + 1;
+        }
+        else{
+            high = mid - 1;
+        }
     }
-    
-    return result;
+
+    return null;
 }

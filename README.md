@@ -12,10 +12,8 @@ Once I get the routing part working the way I want, my next step is to power the
 - Half duplex
 - Memory size
 - Bandwitdth
-- EU Regulations
 
 ### Currently working on:
-- better address assigning
 - Packet buffering 
 
 ### To do:
@@ -34,6 +32,7 @@ Once I get the routing part working the way I want, my next step is to power the
 - Routing
 - DHCP - address assigning
 - only one dhcp req at a time
+- better address assigning
 
 ### Development Diagrams
 

@@ -3,8 +3,10 @@
 #include <protocols.h>
 
 void setup() {
-    Serial.begin(9600);
-    
+    Serial.begin(9600);    
+}
+
+void loop() {
     while(Serial.available() == 0){}
     
     String input = Serial.readStringUntil('\n');
@@ -24,7 +26,7 @@ void setup() {
     uh = UNPACK_HEADER(ph);
 
     char buf[256];
-    sprintf(buf, "initial hash: %d. after conversion hash: %d\n", *(unsigned short*)uh.hmac, HASH_PH(ph));
+    sprintf(buf, "initial hash: %d. after conversion hash: %d\n", (ph.hmac[0] << 8 | ph.hmac[1]), HASH_PH(ph));
     Serial.println(buf);
     Serial.println("--------");
     sprintf(buf, "uh.mac_d: %d\t\tph.mac_d: %d", uh.mac_d, ph.addresses[0] << 6 | (ph.addresses[1] & 0xfc) >> 2);
@@ -35,7 +37,4 @@ void setup() {
     Serial.println(buf); 
     sprintf(buf, "uh.net_s: %d\t\tph.net_s: %d", uh.net_s, (ph.addresses[5] & 0x3f) << 8 | ph.addresses[6]);
     Serial.println(buf);
-}
-
-void loop() {
 }
