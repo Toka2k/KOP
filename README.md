@@ -14,6 +14,7 @@ Once I get the routing part working the way I want, my next step is to power the
 - Bandwitdth
 
 ### Currently working on:
+- Route function
 - Packet buffering 
 
 ### To do:

@@ -36,7 +36,7 @@ typedef struct __attribute__((packed)){
 } packet;
 
 enum Channels{
-    DEFCHANNEL = 0, U1CHANNEL, U2CHANNEL, U3CHANNEL, D1CHANNEL, NET
+    DEFCHANNEL = 0
 };
 
 extern int (*protocols[256])(packed_header, byte*, byte);
@@ -53,7 +53,6 @@ packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
 unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
-int ROUTING(packed_header ph, byte* data, byte length);
 
 
 #endif
