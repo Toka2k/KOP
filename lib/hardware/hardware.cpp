@@ -54,7 +54,7 @@ int get_hw_flags(){
 //      CORE 2
 //
 
-void OnReceive(void){
+void Receive(void){
     hw_flags = 0;
     packed_header ph = {0};
     int state = radio.readData((byte*)&ph, sizeof(packed_header));
@@ -110,7 +110,7 @@ void OnReceive(void){
     return;
 }
 
-void send_packet(){
+void Transmit(){
 
     //read packet from queue
     if (to_send.count == 0){
