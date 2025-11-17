@@ -26,7 +26,7 @@ int DHCP_REQ(){
 
     packet p = packet_init(ph, payload);
 
-    send_packet(p);
+    enqueue(p);
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
         return flags;
@@ -58,7 +58,7 @@ int DHCP_OFFER(byte* data){
 
     packet p = packet_init(ph, payload);
     
-    send_packet(p);
+    enqueue(p);
 
     free(payload);
 
@@ -94,7 +94,7 @@ int DHCP_ACK(packed_header ph, byte* data, byte length){
 
     packet p = packet_init(ph, send_data);
     
-    send_packet(p);
+    enqueue(p);
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
         return flags;
@@ -124,7 +124,7 @@ int DHCP_FIN(packed_header ph, byte* data, byte length){
     
     packet p = packet_init(send, _data);
 
-    send_packet(p);
+    enqueue(p);
 
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
@@ -161,7 +161,7 @@ int DHCP_DENY(){
     req_random = 0;
 
     packet p = packet_init(ph, data);
-    send_packet(p);
+    enqueue(p);
 
     DHCP_DROP();
 

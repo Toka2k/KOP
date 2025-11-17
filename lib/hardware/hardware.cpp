@@ -50,6 +50,10 @@ int get_hw_flags(){
     return hw_flags;
 }
 
+//
+//      CORE 2
+//
+
 void OnReceive(void){
     hw_flags = 0;
     packed_header ph = {0};
@@ -100,21 +104,20 @@ void OnReceive(void){
  
     packet p = packet_init(ph, data);
     
-    for(int i = 0; i < ph.length; i++){
-
-    }
-
-    if (uh.net_d != __my_address.address){
-        ROUTING(ph, data);
-    } else {
-        protocols[ph.protocol_id](ph, data, ph.length);
-    }
+    enqueue(received, p);
 
     radio.startReceive();
     return;
 }
 
-void send_packet(packet p){
+void send_packet(){
+
+    //read packet from queue
+    if (to_send.count == 0){
+        return;
+    }
+    packet p = *(to_send.buf)[to_send.index];
+    
     hw_flags = 0;
 
     //increment seqnum;
@@ -122,6 +125,7 @@ void send_packet(packet p){
     for(; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
     if (i == MAX_NEIGHBOURS){
         hw_flags |= NOT_NEIGHBOUR;
+        dequeue(to_send);
         return;
     }
 
@@ -140,10 +144,17 @@ void send_packet(packet p){
     int state = radio.transmit((char *)&p);
     if (state != RADIOLIB_ERR_NONE){
         hw_flags |= ERROR;
+        dequeue(to_send);
         return;
     }
+
+    dequeue(to_send);
     return;
 }
+
+//
+//      End of CORE 2
+//
 
 packet packet_init(packed_header ph, byte* _payload){
     packet p = {ph, 0};
@@ -210,7 +221,7 @@ int ROUTING(packed_header ph, byte* data){
     packed_header send_ph = PACK_HEADER(send_uh);
     packet p = packet_init(ph, data);
 
-    send_packet(p);
+    enqueue(p);
     if (hw_flags != SUCCESS){
         return hw_flags;
     }

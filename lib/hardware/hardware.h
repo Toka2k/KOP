@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "address_table.h"
 #include "definitions.h"
+#include "packet_buffering.h"
 
 #define SECRET_COUNT 1
 

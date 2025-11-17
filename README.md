@@ -15,9 +15,9 @@ Once I get the routing part working the way I want, my next step is to power the
 
 ### Currently working on:
 - Route function
-- Packet buffering 
 
 ### To do:
+- Processing packets
 - ARP
 - get neighbours
 - DB - DB download, updates
@@ -34,6 +34,8 @@ Once I get the routing part working the way I want, my next step is to power the
 - DHCP - address assigning
 - only one dhcp req at a time
 - better address assigning
+- Packet buffering - received packets, sending packets from to_send queue 
+- Modify all the functions to enqueue packets instead of sending them directly
 
 ### Development Diagrams
 
