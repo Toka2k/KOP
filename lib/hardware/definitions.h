@@ -24,8 +24,11 @@
 #define P_DB    (0x2)
 #define P_DHCP  (0x3)
 
+// Hardware
+#define MAX_STORED_PACKETS 64
 #define MAX_NEIGHBOURS 256
 #define PAYLOAD_SIZE (256 - sizeof(packed_header))
+#define HEADER_SIZE (sizeof(packed_header))
 #define PACKET_SIZE (sizeof(packed_header) + ph.len)
 
 #define ADDRESS_BITS 14
@@ -33,5 +36,5 @@
 
 #define INDEX_OUT_OF_BOUNDS -1
 #define INCORRECT_LENGTH -2
-#define RESERVED_ADDRESSES 2
+#define RESERVED_ADDRESSES 2 
 #endif

@@ -98,8 +98,14 @@ void OnReceive(void){
     byte data[ph.length];
     state = radio.readData(data, ph.length);
  
+    packet p = packet_init(ph, data);
+    
+    for(int i = 0; i < ph.length; i++){
+
+    }
+
     if (uh.net_d != __my_address.address){
-        ROUTING(ph, data, ph.length);
+        ROUTING(ph, data);
     } else {
         protocols[ph.protocol_id](ph, data, ph.length);
     }
@@ -183,7 +189,7 @@ unpacked_header UNPACK_HEADER(packed_header ph){
     return uh;
 }
 
-int ROUTING(packed_header ph, byte* data, byte length){
+int ROUTING(packed_header ph, byte* data){
     unpacked_header received_uh = UNPACK_HEADER(ph);
     addr net_d = {received_uh.net_d};
 

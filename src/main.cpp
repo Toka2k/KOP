@@ -3,10 +3,15 @@
 #include <protocols.h>
 
 void setup() {
-    Serial.begin(9600);    
+    Serial.begin(9600);
+    unit a = {1,1,1,1,1,1,0};
+
+    add_unit(a);
+
 }
 
 void loop() {
+    Serial.println(sizeof(byte*));
     while(Serial.available() == 0){}
     
     String input = Serial.readStringUntil('\n');
