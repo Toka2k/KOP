@@ -3,23 +3,23 @@
 
 #include "hardware.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct __attribute__((packed)){
     packet* buf[MAX_STORED_PACKETS];
     byte count;
     byte index;
 } buf_head;
 
-buf_head received;
-buf_head to_send;
+extern buf_head received;
+extern buf_head to_send;
 
+void enqueue(buf_head* bh, packet p);
+void dequeue(buf_head* bh);
 
-void enqueue(buf_head bh, packet p);
-void dequeue(buf_head bh);
+#ifdef __cplusplus
+}
 #endif
-
-// one core manages sending/receiving packets, the other should be proccessing packets
-
-// Packet Buffer:
-// - create queues for packets to be sent and received packets
-// - modify functions to work with the queue instead of using send_packet() directly
-// - get_packet(struct)
+#endif

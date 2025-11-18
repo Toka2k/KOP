@@ -1,5 +1,7 @@
 #include "hardware.h"
+#include "packet_buffering.h"
 #include "../RadioLib/src/modules/LLCC68/LLCC68.h"
+
 
 // DONT FORGET TO CHANGE THESE NUMBERS FOR PINS
 Module m = Module(CS, IRQ, RST, GPIO);
@@ -104,7 +106,7 @@ void Receive(void){
  
     packet p = packet_init(ph, data);
     
-    enqueue(received, p);
+    enqueue(&received, p);
 
     radio.startReceive();
     return;
@@ -125,7 +127,7 @@ void Transmit(){
     for(; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
     if (i == MAX_NEIGHBOURS){
         hw_flags |= NOT_NEIGHBOUR;
-        dequeue(to_send);
+        dequeue(&to_send);
         return;
     }
 
@@ -144,11 +146,11 @@ void Transmit(){
     int state = radio.transmit((char *)&p);
     if (state != RADIOLIB_ERR_NONE){
         hw_flags |= ERROR;
-        dequeue(to_send);
+        dequeue(&to_send);
         return;
     }
 
-    dequeue(to_send);
+    dequeue(&to_send);
     return;
 }
 
@@ -221,7 +223,7 @@ int ROUTING(packed_header ph, byte* data){
     packed_header send_ph = PACK_HEADER(send_uh);
     packet p = packet_init(ph, data);
 
-    enqueue(p);
+    enqueue(&to_send, p);
     if (hw_flags != SUCCESS){
         return hw_flags;
     }
