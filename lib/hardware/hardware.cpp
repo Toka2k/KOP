@@ -203,10 +203,16 @@ unpacked_header UNPACK_HEADER(packed_header ph){
     return uh;
 }
 
-int ROUTING(packed_header ph, byte* data){
+int procces_packet(){
+    //read packet from queue
+    if (to_send.count == 0){
+        return EMPTY_BUF;
+    }
+    packet p = to_send.buf[to_send.index];
+    
     hw_flags = 0;
 
-    unpacked_header received_uh = UNPACK_HEADER(ph);
+    unpacked_header received_uh = UNPACK_HEADER(p.h);
     addr net_d = {received_uh.net_d};
 
     unit node = find_unit(net_d);
@@ -220,11 +226,13 @@ int ROUTING(packed_header ph, byte* data){
     if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
         send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
     } else {
-        send_uh.mac_d = send_uh.net_d;
+        // Proccessing packets
+        protocols[p.h.protocol_id](p.h, p.data, p.h.length);
+        return hw_flags;
     }
-
+    
     packed_header send_ph = PACK_HEADER(send_uh);
-    packet p = packet_init(ph, data);
+    p = packet_init(p.h, p.data);
 
     enqueue(&to_send, p);
     hw_flags &= SUCCESS;

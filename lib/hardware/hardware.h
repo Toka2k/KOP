@@ -53,5 +53,6 @@ packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
 unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
+int route(addr dest, byte length, byte protocol_id, byte* data);
 
 #endif

@@ -185,8 +185,6 @@ int DHCP_DROP(){
 }
 
 int DHCP(packed_header ph, byte* data, byte length){
-    // Add some flag to prevent multiple dhcp requests to interfere
-    // add some checks to see wether we sent dhcp req
     if (data == NULL){
         return NULL_POINTER;
     }

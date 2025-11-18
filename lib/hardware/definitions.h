@@ -15,6 +15,7 @@
 #define INVALID_LENGTH (1<<3)
 #define INVALID_ADDRESS (1<<4)
 #define NOT_NEIGHBOUR (1<<5)
+#define EMPTY_BUF (1<<6)
 
 // generic errors
 #define NULL_POINTER -1; 
