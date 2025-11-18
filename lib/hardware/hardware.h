@@ -46,8 +46,8 @@ extern int (*protocols[256])(packed_header, byte*, byte);
 #endif
 
 int get_hw_flags();
-void OnReceive();
-void send_packet(packet p);
+void Receive(void);
+void Transmit(void);
 packet packet_init(packed_header ph, byte* payload);
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);

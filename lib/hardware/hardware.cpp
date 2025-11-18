@@ -112,7 +112,7 @@ void Receive(void){
     return;
 }
 
-void Transmit(){
+void Transmit(void){
 
     //read packet from queue
     if (to_send.count == 0){
@@ -138,6 +138,7 @@ void Transmit(){
     int hmac = HASH_PH(p.h);
     p.h.hmac[0] = (hmac & 0xff00) >> 8;
     p.h.hmac[1] = hmac & 0xff;
+
     //scaning
     while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
         sleep(random() % 11);
@@ -203,6 +204,8 @@ unpacked_header UNPACK_HEADER(packed_header ph){
 }
 
 int ROUTING(packed_header ph, byte* data){
+    hw_flags = 0;
+
     unpacked_header received_uh = UNPACK_HEADER(ph);
     addr net_d = {received_uh.net_d};
 
@@ -224,11 +227,27 @@ int ROUTING(packed_header ph, byte* data){
     packet p = packet_init(ph, data);
 
     enqueue(&to_send, p);
-    if (hw_flags != SUCCESS){
+    hw_flags &= SUCCESS;
+
+    return hw_flags;
+}
+
+int route(addr dest, byte length, byte protocol_id, byte* data){
+    hw_flags = 0;
+    unpacked_header uh = {0, __my_address.address, dest.address, __my_address.address, length, protocol_id, 0};
+
+    unit nextHop = find_unit(dest);
+    if(_memcmp(&nextHop, &null, sizeof(unit))){
+        hw_flags |= INVALID_ADDRESS;
         return hw_flags;
     }
 
-    hw_flags &= SUCCESS;
-
+    uh.mac_d = (nextHop.hnextHop << 8 | nextHop.lnextHop); 
+    packed_header ph = PACK_HEADER(uh);
+    
+    packet p = packet_init(ph, data);
+    enqueue(&to_send, p);
+    
+    hw_flags = SUCCESS;
     return hw_flags;
 }

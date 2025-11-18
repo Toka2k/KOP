@@ -14,10 +14,9 @@ Once I get the routing part working the way I want, my next step is to power the
 - Bandwitdth
 
 ### Currently working on:
-- Route function
+- Processing packets
 
 ### To do:
-- Processing packets
 - ARP
 - get neighbours
 - DB - DB download, updates
@@ -36,6 +35,7 @@ Once I get the routing part working the way I want, my next step is to power the
 - better address assigning
 - Packet buffering - received packets, sending packets from to_send queue 
 - Modify all the functions to enqueue packets instead of sending them directly
+- Route function
 
 ### Development Diagrams
 
