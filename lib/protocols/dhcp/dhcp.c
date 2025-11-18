@@ -71,19 +71,19 @@ int DHCP_OFFER(byte* data){
     return SUCCESS;
 }
 
-int DHCP_ACK(packed_header ph, byte* data, byte length){
-    if (length <= 0){
+int DHCP_ACK(packet p){
+    if (p.h.length == 0){
         return INVALID_LENGTH;
     }
     // check for more errors
-    unpacked_header received_off = UNPACK_HEADER(ph);
+    unpacked_header received_off = UNPACK_HEADER(p.h);
     unpacked_header send = {0};
 
     send.mac_d = received_off.mac_s;
     send.net_d = received_off.net_s;
 
-    send.mac_s = (*(data + 1) << 8 | *(data + 2));
-    send.net_s = (*(data + 1) << 8 | *(data + 2));
+    send.mac_s = (*(p.data + 1) << 8 | *(p.data + 2));
+    send.net_s = (*(p.data + 1) << 8 | *(p.data + 2));
 
     __my_address.address = send.mac_s;
     
@@ -93,7 +93,7 @@ int DHCP_ACK(packed_header ph, byte* data, byte length){
     packed_header send_packed = PACK_HEADER(send);
     byte send_data[] = {req_random, 2};
 
-    packet p = packet_init(ph, send_data);
+    p = packet_init(p.h, send_data);
     
     enqueue(&to_send, p);
     int flags;
@@ -104,14 +104,14 @@ int DHCP_ACK(packed_header ph, byte* data, byte length){
     return SUCCESS;
 }
 
-int DHCP_FIN(packed_header ph, byte* data, byte length){
-    unpacked_header received_ack = UNPACK_HEADER(ph);
+int DHCP_FIN(packet p){
+    unpacked_header received_ack = UNPACK_HEADER(p.h);
     unpacked_header send_fin = {received_ack.mac_s, __my_address.address, received_ack.net_s, __my_address.address, 0};
 
     // add to DB
-    addr leased_address = {(*(data + 1) << 8 | *(data + 2))};
+    addr leased_address = {(*(p.data + 1) << 8 | *(p.data + 2))};
     add_unit(initialize_unit(leased_address.address, 1, __my_address.address));
-    if (HASH_PH(ph) != *(unsigned short*)ph.hmac){
+    if (HASH_PH(p.h) != *(unsigned short*)p.h.hmac){
         routers[leased_address.address / 8] |= 1 << (leased_address.address % 8);
     } else {
         routers[leased_address.address / 8] &= ~(1 << (leased_address.address % 8));
@@ -123,7 +123,7 @@ int DHCP_FIN(packed_header ph, byte* data, byte length){
     packed_header send = PACK_HEADER(send_fin);
     byte _data[] = {off_random, 3};
     
-    packet p = packet_init(send, _data);
+    p = packet_init(send, _data);
 
     enqueue(&to_send, p);
 
@@ -184,28 +184,28 @@ int DHCP_DROP(){
     return SUCCESS;
 }
 
-int DHCP(packed_header ph, byte* data, byte length){
-    if (data == NULL){
+int DHCP(packet p){
+    if (p.data == NULL){
         return NULL_POINTER;
     }
 
-    if (length < 1){
+    if (p.h.length < 1){
         return INVALID_LENGTH;
     }
 
-    if (off_random != *data || req_random != *data){
+    if (off_random != *p.data || req_random != *p.data){
         return ERROR;
     }
 
-    if (*(data + 1) == 0){
-        return DHCP_OFFER(data);
-    } else if (*(data + 1) == 1){
-        return DHCP_ACK(ph, data, length);
-    } else if (*(data + 1) == 2){
-        return DHCP_FIN(ph, data, length);
-    } else if (*(data + 1) == 3){
-        return DHCP_ACC(ph);
-    } else if (*(data + 1) == 4){
+    if (*(p.data + 1) == 0){
+        return DHCP_OFFER(p.data);
+    } else if (*(p.data + 1) == 1){
+        return DHCP_ACK(p);
+    } else if (*(p.data + 1) == 2){
+        return DHCP_FIN(p);
+    } else if (*(p.data + 1) == 3){
+        return DHCP_ACC(p.h);
+    } else if (*(p.data + 1) == 4){
         return DHCP_DROP();
     }
 

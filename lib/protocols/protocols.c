@@ -1,6 +1,6 @@
 #include "../hardware/hardware.h"
 #include "protocols.h"
 
-int (*protocols[256])(packed_header, byte*, byte) = {
-    0, 0, 0, DHCP, 0
+int (*protocols[256])(packet p) = {
+    0, 0, GET_NEIGHBOURS, DHCP, 0
 };

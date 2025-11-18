@@ -39,7 +39,7 @@ enum Channels{
     DEFCHANNEL = 0
 };
 
-extern int (*protocols[256])(packed_header, byte*, byte);
+extern int (*protocols[256])(packet p);
 
 #ifdef __cplusplus
 }

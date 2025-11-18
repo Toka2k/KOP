@@ -11,12 +11,12 @@ extern "C" {
 
 int DHCP_REQ();
 int DHCP_OFFER(byte* data);
-int DHCP_ACK(packed_header ph, byte* data, byte length);
-int DHCP_FIN(packed_header ph, byte* data, byte length);
+int DHCP_ACK(packet p);
+int DHCP_FIN(packet p);
 int DHCP_ACC(packed_header ph);
 int DHCP_DENY();
 int DHCP_DROP();
-int DHCP(packed_header ph, byte* data, byte length);
+int DHCP(packet p);
 
 #ifdef __cplusplus
 }

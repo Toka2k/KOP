@@ -203,7 +203,7 @@ unpacked_header UNPACK_HEADER(packed_header ph){
     return uh;
 }
 
-int procces_packet(){
+int process_packet(){
     //read packet from queue
     if (to_send.count == 0){
         return EMPTY_BUF;
@@ -227,7 +227,7 @@ int procces_packet(){
         send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
     } else {
         // Proccessing packets
-        protocols[p.h.protocol_id](p.h, p.data, p.h.length);
+        protocols[p.h.protocol_id](p);
         return hw_flags;
     }
     

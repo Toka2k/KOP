@@ -14,28 +14,25 @@ Once I get the routing part working the way I want, my next step is to power the
 - Bandwitdth
 
 ### Currently working on:
-- Processing packets
+- get neighbours
 
 ### To do:
 - ARP
-- get neighbours
 - DB - DB download, updates
 - Channel scanning
 
 ### Currently finished implementing:
-- Hash function
-- Routing table
-- Sequence numbers implemented in headers
-- onReceive function (handles moving the payload to correct protocol)
-- included RadioLib.h
-- Listen Before Talk
 - Routing
-- DHCP - address assigning
-- only one dhcp req at a time
-- better address assigning
-- Packet buffering - received packets, sending packets from to_send queue 
-- Modify all the functions to enqueue packets instead of sending them directly
-- Route function
+    - Sequence number
+    - Routing table
+    - Hash function
+- Packet Processing
+    - Packet buffering - received packets, sending packets from to_send queue 
+    - Modify all the functions to enqueue packets instead of sending them directly
+- Decentralized DHCP
+    - Address assigning
+- Transmit and Receive functions
+    - Listen Before Talk
 
 ### Development Diagrams
 
