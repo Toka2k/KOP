@@ -118,7 +118,7 @@ void Transmit(){
     if (to_send.count == 0){
         return;
     }
-    packet p = *(to_send.buf)[to_send.index];
+    packet p = to_send.buf[to_send.index];
     
     hw_flags = 0;
 

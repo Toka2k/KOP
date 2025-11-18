@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 typedef struct __attribute__((packed)){
-    packet* buf[MAX_STORED_PACKETS];
+    packet* buf;
     byte count;
     byte index;
 } buf_head;
