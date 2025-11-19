@@ -23,7 +23,7 @@ Once I get the routing part working the way I want, my next step is to power the
 
 ### Currently finished implementing:
 - Routing
-\t- Sequence number
+    - Sequence number
     - Routing table
     - Hash function
 - Packet Processing
