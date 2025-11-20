@@ -5,7 +5,7 @@
 #include "../hardware/address_table.h"
 
 #include "dhcp/dhcp.h"
-#include "get_neighbours/get_neighbours.h"
+#include "arp/arp.h"
 
 #ifdef __cplusplus
 extern "C" {

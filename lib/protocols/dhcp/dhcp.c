@@ -96,6 +96,7 @@ int DHCP_ACK(packet p){
     p = packet_init(p.h, send_data);
     
     enqueue(&to_send, p);
+
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
         return flags;
@@ -147,6 +148,16 @@ int DHCP_ACC(packed_header ph){
     return SUCCESS;    
 }
 
+int DHCP_DROP(){
+    if(req_random != 0){
+        __my_address.address = 0;
+        req_random = 0;
+    } else if(off_random != 0){
+        off_random = 0;
+    }
+    return SUCCESS;
+}
+
 int DHCP_DENY(){
     unpacked_header uh = {~0, __my_address.address, ~0, __my_address.address, 2, P_DHCP, 0};
     packed_header ph = PACK_HEADER(uh);
@@ -171,16 +182,6 @@ int DHCP_DENY(){
         return flags;
     }
 
-    return SUCCESS;
-}
-
-int DHCP_DROP(){
-    if(req_random != 0){
-        __my_address.address = 0;
-        req_random = 0;
-    } else if(off_random != 0){
-        off_random = 0;
-    }
     return SUCCESS;
 }
 

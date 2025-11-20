@@ -1,5 +1,5 @@
-#ifndef ___GET_NEIGHBOURS___
-#define ___GET_NEIGHBOURS___
+#ifndef ___ARP___
+#define ___ARP___
 
 #include "../../hardware/hardware.h"
 
@@ -7,7 +7,8 @@
 extern "C" {
 #endif
 
-int GET_NEIGHBOURS(packet p);
+int ECHO_REQ(addr address);
+int ARP(packet p);
 
 #ifdef __cplusplus
 }

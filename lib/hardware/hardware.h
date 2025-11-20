@@ -45,7 +45,11 @@ extern int (*protocols[256])(packet p);
 }
 #endif
 
+extern addr neighbours[MAX_NEIGHBOURS];
+extern byte neighbours_size;
+
 int get_hw_flags();
+addr find_addr(addr address);
 void Receive(void);
 void Transmit(void);
 packet packet_init(packed_header ph, byte* payload);

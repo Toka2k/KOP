@@ -2,7 +2,6 @@
 #include "packet_buffering.h"
 #include "../RadioLib/src/modules/LLCC68/LLCC68.h"
 
-
 // DONT FORGET TO CHANGE THESE NUMBERS FOR PINS
 Module m = Module(CS, IRQ, RST, GPIO);
 LLCC68 radio = LLCC68(&m);
@@ -11,7 +10,8 @@ static int hw_flags = 0;
 double __channels[] = {8680E5};
 static byte seqnum[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnum[MAX_NEIGHBOURS] = {0};
-static addr neighbours[MAX_NEIGHBOURS] = {0};
+addr neighbours[MAX_NEIGHBOURS] = {0};
+byte neighbours_size = 0;
 
 // First set of magic numbers, is for hosts
 // Second set of magic numbers, is for routers
@@ -52,6 +52,27 @@ int get_hw_flags(){
     return hw_flags;
 }
 
+int cmp_addr(const void* a, const void* b){
+    return ((*(addr*)a).address - (*(addr*)b).address);
+}
+
+addr find_addr(addr address){
+    int low = 0, high = neighbours_size - 1;
+
+    while (low <= high) {
+        int mid = (low + high) / 2;
+        if (neighbours[mid].address == address.address)
+            return neighbours[mid];
+        else if (neighbours[mid].address < address.address){
+            low = mid + 1;
+        }
+        else{
+            high = mid - 1;
+        }
+    }
+
+    return (addr){0};
+}
 //
 //      CORE 2
 //
@@ -68,11 +89,6 @@ void Receive(void){
     }
 
     unpacked_header uh = UNPACK_HEADER(ph);
-    if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
-        radio.finishReceive();
-        radio.startReceive();
-        return;
-    } 
 
     //compare hmac
     if (*(unsigned short*)ph.hmac != HASH_PH(ph)){
@@ -82,10 +98,30 @@ void Receive(void){
         return;
     }
 
+    addr neighbour = {0};
+    neighbour.address = uh.mac_s;
+    addr result = find_addr(neighbour);
+    addr zero = {0};
+
+    if (_memcmp(&result, &zero, sizeof(addr)) == 0){
+        neighbours[neighbours_size % MAX_NEIGHBOURS] = neighbour;
+
+        if (neighbours_size < MAX_NEIGHBOURS){
+            qsort(neighbours, neighbours_size, sizeof(addr), cmp_addr);
+            neighbours_size += 1;
+        }
+    }
+
+    if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
+        radio.finishReceive();
+        radio.startReceive();
+        return;
+    }
+    
     //compare seqnum;
     int i = 0;
-    for(; neighbours[i].address != uh.mac_s && i < MAX_NEIGHBOURS; i++){}
-    if (i == MAX_NEIGHBOURS){
+    for(; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
+    if (i == neighbours_size){
         hw_flags |= NOT_NEIGHBOUR;
         radio.finishReceive();
         radio.startReceive();

@@ -1,24 +1,24 @@
 # Lora WWAN
 I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 
-My idea is to build the network using LoRa devices and have it assign addresses from any routing device, kind of like a decentralized DHCP system. For routing, I plan to use something similar to RIP, which means that every router would need to keep a full map of the entire network in memory. This creates several technical challenges that I’ll need to figure out.
+// Think about a way to use protocol in another protocol
+// Think about having one static packet p; that would be shared by all functions in one protocol, to save time copying entire packets all the time
 
-Once I get the routing part working the way I want, my next step is to power the routing nodes with a battery and solar panel. That way, they could be deployed anywhere and keep running indefinitely without needing maintenance.
+- DECIDE wether it is needed to handle errors and how to handle errors when transmitting packets, since we dont send them directly, but in FIFO order. 
+    - struct with hw_info, and the packet that failed to send; 
+    - some function that will be called to resolve this issue
 
 ### Hardware in use
 - esp32
-
-### Main limitations:
-- Half duplex
-- Memory size
-- Bandwitdth
+- EBYTE e220-433M33S Lora Module
+- 3dbi antena
 
 ### Currently working on:
-- get neighbours
+- DB 
+    - DB download
+    - updates
 
 ### To do:
-- ARP
-- DB - DB download, updates
 - Channel scanning
 
 ### Currently finished implementing:
@@ -26,6 +26,7 @@ Once I get the routing part working the way I want, my next step is to power the
     - Sequence number
     - Routing table
     - Hash function
+    - Get neighbours
 - Packet Processing
     - Packet buffering - received packets, sending packets from to_send queue 
     - Modify all the functions to enqueue packets instead of sending them directly
@@ -33,6 +34,8 @@ Once I get the routing part working the way I want, my next step is to power the
     - Address assigning
 - Transmit and Receive functions
     - Listen Before Talk
+- ARP
+
 
 ### Development Diagrams
 

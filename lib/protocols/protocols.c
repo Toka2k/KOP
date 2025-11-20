@@ -2,5 +2,5 @@
 #include "protocols.h"
 
 int (*protocols[256])(packet p) = {
-    0, 0, GET_NEIGHBOURS, DHCP, 0
+    0, 0, ARP, DHCP, 0
 };
