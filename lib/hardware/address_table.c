@@ -5,10 +5,7 @@ unit null = {0};
 static unit __table[MAX_TABLE_SIZE] = {0};
 flags FLAGS = {0};
 size __table_size = {0};
-static unit __reserved_addresses[] = {
-    {0, 0x3f, 0, 0, 0, 0xff, 0},
-    {0, 0, 0, 0, 0, 0, 0}
-};
+static addr __reserved_addresses[] = {0, 0x3fff};
 int routers[1 << (ADDRESS_BITS - 5)] = {0};
 
 // MANAGE HIGHEST ADDRESS WITH DHCP
@@ -21,17 +18,15 @@ int cmp_unit(const void* a, const void* b){
 
 int check(unit check){
     for(int j = 0; j < RESERVED_ADDRESSES; j++){
-        if (_memcmp(&check, &__reserved_addresses[j], sizeof(unit)) == 0){
+        if ((check.haddress << 8 | check.laddress) == __reserved_addresses[j].address){
             return -1;
-        } else if ((check.haddress << 8 | check.laddress) == (__reserved_addresses[j].haddress << 8 | __reserved_addresses[j].laddress)){
+        } else if ((check.hnextHop << 8 | check.lnextHop) == __reserved_addresses[j].address){
             return -2;
-        } else if ((check.hnextHop << 8 | check.lnextHop) == (__reserved_addresses[j].haddress << 8 | __reserved_addresses[j].laddress)){
-            return -3;
         }
     }
 
     if ((check.hcost << 10 | check.cost << 2 | check.lcost) == (~0 & 0xfff)){
-        return -4;
+        return -3;
     }
 
     return SUCCESS;

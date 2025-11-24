@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 int DHCP_REQ();
-int DHCP(packet p);
+int DHCP(packet* p);
 
 #ifdef __cplusplus
 }

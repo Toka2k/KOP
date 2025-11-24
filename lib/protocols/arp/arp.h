@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 int ECHO_REQ(addr address);
-int ARP(packet p);
+int ARP(packet* p);
 
 #ifdef __cplusplus
 }

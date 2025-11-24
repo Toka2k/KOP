@@ -1,9 +1,6 @@
 # Lora WWAN
 I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 
-// Think about a way to use protocol in another protocol
-// Think about having one static packet p; that would be shared by all functions in one protocol, to save time copying entire packets all the time
-
 - DECIDE wether it is needed to handle errors and how to handle errors when transmitting packets, since we dont send them directly, but in FIFO order. 
     - struct with hw_info, and the packet that failed to send; 
     - some function that will be called to resolve this issue
@@ -14,6 +11,9 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - 3dbi antena
 
 ### Currently working on:
+- Main Loop
+    - Setup - IRS -> Receive, initialize tables, etc.
+    - Transmit and process task
 - DB 
     - DB download
     - updates

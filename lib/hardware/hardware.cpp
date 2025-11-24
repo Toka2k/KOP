@@ -8,8 +8,8 @@ LLCC68 radio = LLCC68(&m);
 
 static int hw_flags = 0;
 double __channels[] = {8680E5};
-static byte seqnum[MAX_NEIGHBOURS] = {0};
-static byte neighbour_seqnum[MAX_NEIGHBOURS] = {0};
+static byte my_seqnums[MAX_NEIGHBOURS] = {0};
+static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
 addr neighbours[MAX_NEIGHBOURS] = {0};
 byte neighbours_size = 0;
 
@@ -56,6 +56,10 @@ int cmp_addr(const void* a, const void* b){
     return ((*(addr*)a).address - (*(addr*)b).address);
 }
 
+int cmp_index(const void *a, const void *b){
+    return neighbours[*(const int *)a].address - neighbours[*(const int *)b].address;
+}
+
 addr find_addr(addr address){
     int low = 0, high = neighbours_size - 1;
 
@@ -73,6 +77,33 @@ addr find_addr(addr address){
 
     return (addr){0};
 }
+
+void sort_neighbours(){
+    int temp[neighbours_size] = {0};
+    for (int i = 0; i < neighbours_size; i++){
+        temp[i] = i;
+    }
+
+    qsort(temp, neighbours_size, sizeof(int), cmp_index);
+
+    byte _my_seqnums[neighbours_size] = {0};
+    byte _neighbour_seqnums[neighbours_size] = {0};
+    addr _neighbours[neighbours_size] = {0};
+
+    for(int i = 0; i < neighbours_size; i++){
+        _my_seqnums[i] = my_seqnums[temp[i]];
+        _neighbour_seqnums[i] = neighbour_seqnums[temp[i]];
+        _neighbours[i] = neighbours[temp[i]];
+    }
+    
+    for(int i = 0; i < neighbours_size; i++){
+        my_seqnums[i] = _my_seqnums[i];
+        neighbour_seqnums[i] = _neighbour_seqnums[i];
+        neighbours[i] = _neighbours[i];
+    }
+    return;
+}
+
 //
 //      CORE 2
 //
@@ -80,6 +111,7 @@ addr find_addr(addr address){
 void Receive(void){
     hw_flags = 0;
     packed_header ph = {0};
+    // if we successfuly read data we continue
     int state = radio.readData((byte*)&ph, sizeof(packed_header));
     if (state != RADIOLIB_ERR_NONE){
         hw_flags |= ERROR;
@@ -103,22 +135,25 @@ void Receive(void){
     addr result = find_addr(neighbour);
     addr zero = {0};
 
+    // if its not our neighbour, we add them to neighbours
     if (_memcmp(&result, &zero, sizeof(addr)) == 0){
         neighbours[neighbours_size % MAX_NEIGHBOURS] = neighbour;
 
         if (neighbours_size < MAX_NEIGHBOURS){
-            qsort(neighbours, neighbours_size, sizeof(addr), cmp_addr);
+            sort_neighbours();
             neighbours_size += 1;
         }
+        add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
     }
 
+    // if its not for me or local broadcast, we drop the packet
     if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
         radio.finishReceive();
         radio.startReceive();
         return;
     }
     
-    //compare seqnum;
+    //compare seqnum
     int i = 0;
     for(; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
     if (i == neighbours_size){
@@ -128,8 +163,9 @@ void Receive(void){
         return; 
     }
 
-    if (neighbour_seqnum[i] == ph.seqnum){
-        neighbour_seqnum[i]++;
+    // We track seqnums of neighbours
+    if (neighbour_seqnums[i] == ph.seqnum){
+        neighbour_seqnums[i]++;
     } else {
         hw_flags |= INVALID_SEQNUM;
         radio.finishReceive();
@@ -141,7 +177,7 @@ void Receive(void){
     state = radio.readData(data, ph.length);
  
     packet p = packet_init(ph, data);
-    
+ 
     enqueue(&received, p);
 
     radio.startReceive();
@@ -167,8 +203,8 @@ void Transmit(void){
         return;
     }
 
-    seqnum[i]++;
-    p.h.seqnum = seqnum[i];
+    my_seqnums[i]++;
+    p.h.seqnum = my_seqnums[i];
 
     //calculate HMAC
     int hmac = HASH_PH(p.h);
@@ -263,7 +299,7 @@ int process_packet(){
         send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
     } else {
         // Proccessing packets
-        protocols[p.h.protocol_id](p);
+        protocols[p.h.protocol_id](&p);
         return hw_flags;
     }
     
