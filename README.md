@@ -1,25 +1,22 @@
 # Lora WWAN
 I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 
-- DECIDE wether it is needed to handle errors and how to handle errors when transmitting packets, since we dont send them directly, but in FIFO order. 
-    - struct with hw_info, and the packet that failed to send; 
-    - some function that will be called to resolve this issue
-
 ### Hardware in use
 - esp32
 - EBYTE e220-433M33S Lora Module
 - 3dbi antena
 
 ### Currently working on:
+- Modify functions to wait for getting packet back.
 - Main Loop
-    - Setup - IRS -> Receive, initialize tables, etc.
+    - Setup - ISR -> Receive, initialize tables, etc.
     - Transmit and process task
+### To do:
 - DB 
     - DB download
     - updates
-
-### To do:
 - Channel scanning
+- Add function for faulty transmission handling
 
 ### Currently finished implementing:
 - Routing
