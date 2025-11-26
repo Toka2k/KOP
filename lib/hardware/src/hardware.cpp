@@ -2,7 +2,7 @@
 #include <packet_buffering.h>
 #include "../../RadioLib/src/modules/LLCC68/LLCC68.h"
 
-Module m = Module(LORA_NSS, LORA_DIO1, LORA_BUSY, LORA_RST);
+Module m = Module(LORA_NSS, LORA_DIO1, LORA_RST, LORA_BUSY);
 LLCC68 radio = LLCC68(&m);
 
 static int hw_flags = 0;
@@ -185,8 +185,6 @@ void Receive(void){
 
 void Transmit(void* pvParameters){
     for (;;){
-        digitalWrite(LORA_RXEN, LOW);
-        digitalWrite(LORA_TXEN, HIGH);
         hw_flags = 0;
 
         //read packet from queue
@@ -226,8 +224,6 @@ void Transmit(void* pvParameters){
         }
 
         dequeue(&to_send);
-        digitalWrite(LORA_RXEN, HIGH);
-        digitalWrite(LORA_TXEN, LOW);
         radio.startReceive();
         vTaskDelay(10);
     }

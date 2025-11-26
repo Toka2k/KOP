@@ -8,8 +8,6 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 
 ### Currently working on:
 - Modify functions to wait for getting packet back.
-- Main Loop
-    - Transmit and process task
 ### To do:
 - DB 
     - DB download
@@ -33,6 +31,7 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - ARP
 - Main Loop
     - Setup - ISR -> Receive, initialize tables, etc.
+    - Transmit and process task
 
 
 ### Development Diagrams

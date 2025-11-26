@@ -2,7 +2,7 @@
 #define ___DEFINITIONS___
 
 // PINS
-#define LORA_NSS   2     // SPI chip select
+#define LORA_NSS   5     // SPI chip select
 #define LORA_RST   14    // Reset pin
 #define LORA_RXEN  16    // TXEN pin
 #define LORA_TXEN  17    // RXEN pin
