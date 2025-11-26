@@ -1,6 +1,6 @@
 #include <hardware.h>
 #include <packet_buffering.h>
-#include "../RadioLib/src/modules/LLCC68/LLCC68.h"
+#include "../../RadioLib/src/modules/LLCC68/LLCC68.h"
 
 Module m = Module(LORA_NSS, LORA_DIO1, LORA_BUSY, LORA_RST);
 LLCC68 radio = LLCC68(&m);

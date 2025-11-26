@@ -41,10 +41,6 @@ enum Channels{
 
 extern int (*protocols[256])(packet* p);
 
-#ifdef __cplusplus
-}
-#endif
-
 extern addr neighbours[MAX_NEIGHBOURS];
 extern byte neighbours_size;
 
@@ -59,5 +55,9 @@ unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
 void process_packet(void* pvParameters);
 int route(addr dest, byte length, byte protocol_id, byte* data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

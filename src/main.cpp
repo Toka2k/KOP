@@ -36,7 +36,7 @@ void setup() {
     radio.setPacketReceivedAction(Receive);
     xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 2, NULL, 1);
     xTaskCreatePinnedToCore(callback_check, "Radio Loop task", 4096, NULL, 3, NULL, 1);
-    xTaskCreatePinnedToCore(process_packet, "Packet processing task", 4096, NULL, 3, NULL, 0);
+    xTaskCreatePinnedToCore(process_packet, "Packet processing task", 2048, NULL, 3, NULL, 0);
 }
 
 void loop() {
