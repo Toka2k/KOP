@@ -1,7 +1,7 @@
 #ifndef ___ARP___
 #define ___ARP___
 
-#include "../../hardware/hardware.h"
+#include <hardware.h>
 
 #ifdef __cplusplus
 extern "C" {

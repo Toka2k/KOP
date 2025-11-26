@@ -9,7 +9,6 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 ### Currently working on:
 - Modify functions to wait for getting packet back.
 - Main Loop
-    - Setup - ISR -> Receive, initialize tables, etc.
     - Transmit and process task
 ### To do:
 - DB 
@@ -32,6 +31,8 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - Transmit and Receive functions
     - Listen Before Talk
 - ARP
+- Main Loop
+    - Setup - ISR -> Receive, initialize tables, etc.
 
 
 ### Development Diagrams

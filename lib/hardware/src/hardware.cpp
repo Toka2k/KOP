@@ -1,9 +1,8 @@
-#include "hardware.h"
-#include "packet_buffering.h"
+#include <hardware.h>
+#include <packet_buffering.h>
 #include "../RadioLib/src/modules/LLCC68/LLCC68.h"
 
-// DONT FORGET TO CHANGE THESE NUMBERS FOR PINS
-Module m = Module(CS, IRQ, RST, GPIO);
+Module m = Module(LORA_NSS, LORA_DIO1, LORA_BUSY, LORA_RST);
 LLCC68 radio = LLCC68(&m);
 
 static int hw_flags = 0;
@@ -178,53 +177,60 @@ void Receive(void){
  
     packet p = packet_init(ph, data);
  
-    enqueue(&received, p);
+    enqueue(&received, &p);
 
     radio.startReceive();
     return;
 }
 
-void Transmit(void){
+void Transmit(void* pvParameters){
+    for (;;){
+        digitalWrite(LORA_RXEN, LOW);
+        digitalWrite(LORA_TXEN, HIGH);
+        hw_flags = 0;
 
-    //read packet from queue
-    if (to_send.count == 0){
-        return;
-    }
-    packet p = to_send.buf[to_send.index];
-    
-    hw_flags = 0;
+        //read packet from queue
+        if (to_send.count == 0){
+            hw_flags |= EMPTY_BUF;
+            continue;
+        }
+        packet p = *to_send.buf[to_send.index];
 
-    //increment seqnum;
-    int i = 0;
-    for(; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
-    if (i == MAX_NEIGHBOURS){
-        hw_flags |= NOT_NEIGHBOUR;
+        //increment seqnum;
+        int i = 0;
+        for(; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
+        if (i == MAX_NEIGHBOURS){
+            hw_flags |= NOT_NEIGHBOUR;
+            dequeue(&to_send);
+            continue;
+        }
+
+        my_seqnums[i]++;
+        p.h.seqnum = my_seqnums[i];
+
+        //calculate HMAC
+        int hmac = HASH_PH(p.h);
+        p.h.hmac[0] = (hmac & 0xff00) >> 8;
+        p.h.hmac[1] = hmac & 0xff;
+
+        //scaning
+        while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
+            sleep(random() % 11);
+        }
+
+        int state = radio.transmit((char *)&p, p.h.length + HEADER_SIZE);
+        if (state != RADIOLIB_ERR_NONE){
+            hw_flags |= ERROR;
+            dequeue(&to_send);
+            continue;
+        }
+
         dequeue(&to_send);
-        return;
+        digitalWrite(LORA_RXEN, HIGH);
+        digitalWrite(LORA_TXEN, LOW);
+        radio.startReceive();
+        vTaskDelay(10);
     }
-
-    my_seqnums[i]++;
-    p.h.seqnum = my_seqnums[i];
-
-    //calculate HMAC
-    int hmac = HASH_PH(p.h);
-    p.h.hmac[0] = (hmac & 0xff00) >> 8;
-    p.h.hmac[1] = hmac & 0xff;
-
-    //scaning
-    while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
-        sleep(random() % 11);
-    }
-
-    int state = radio.transmit((char *)&p);
-    if (state != RADIOLIB_ERR_NONE){
-        hw_flags |= ERROR;
-        dequeue(&to_send);
-        return;
-    }
-
-    dequeue(&to_send);
-    return;
 }
 
 //
@@ -275,41 +281,42 @@ unpacked_header UNPACK_HEADER(packed_header ph){
     return uh;
 }
 
-int process_packet(){
-    //read packet from queue
-    if (to_send.count == 0){
-        return EMPTY_BUF;
+void process_packet(void* pvParameters){
+    for(;;){
+        hw_flags = 0;
+
+        //read packet from queue
+        if (to_send.count == 0){
+            hw_flags |= EMPTY_BUF;
+            continue;
+        }
+        packet p = *received.buf[received.index];
+
+        unpacked_header received_uh = UNPACK_HEADER(p.h);
+        addr net_d = {received_uh.net_d};
+
+        unit node = find_unit(net_d);
+        if ((check(node)) != SUCCESS){
+            hw_flags |= INVALID_ADDRESS;
+            continue;
+        }
+
+        unpacked_header send_uh = received_uh;
+        send_uh.mac_s = __my_address.address;
+        if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
+            send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
+        } else {
+            // Proccessing packets
+            protocols[p.h.protocol_id](&p);
+            continue;
+        }
+        
+        packed_header send_ph = PACK_HEADER(send_uh);
+        p = packet_init(p.h, p.data);
+
+        enqueue(&to_send, &p);
+        hw_flags &= SUCCESS;
     }
-    packet p = to_send.buf[to_send.index];
-    
-    hw_flags = 0;
-
-    unpacked_header received_uh = UNPACK_HEADER(p.h);
-    addr net_d = {received_uh.net_d};
-
-    unit node = find_unit(net_d);
-    if ((check(node)) != SUCCESS){
-        hw_flags |= INVALID_ADDRESS;
-        return hw_flags;
-    }
-
-    unpacked_header send_uh = received_uh;
-    send_uh.mac_s = __my_address.address;
-    if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
-        send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
-    } else {
-        // Proccessing packets
-        protocols[p.h.protocol_id](&p);
-        return hw_flags;
-    }
-    
-    packed_header send_ph = PACK_HEADER(send_uh);
-    p = packet_init(p.h, p.data);
-
-    enqueue(&to_send, p);
-    hw_flags &= SUCCESS;
-
-    return hw_flags;
 }
 
 int route(addr dest, byte length, byte protocol_id, byte* data){
@@ -317,7 +324,7 @@ int route(addr dest, byte length, byte protocol_id, byte* data){
     unpacked_header uh = {0, __my_address.address, dest.address, __my_address.address, length, protocol_id, 0};
 
     unit nextHop = find_unit(dest);
-    if(_memcmp(&nextHop, &null, sizeof(unit))){
+    if (_memcmp(&nextHop, &null, sizeof(unit))){
         hw_flags |= INVALID_ADDRESS;
         return hw_flags;
     }
@@ -326,7 +333,7 @@ int route(addr dest, byte length, byte protocol_id, byte* data){
     packed_header ph = PACK_HEADER(uh);
     
     packet p = packet_init(ph, data);
-    enqueue(&to_send, p);
+    enqueue(&to_send, &p);
     
     hw_flags = SUCCESS;
     return hw_flags;

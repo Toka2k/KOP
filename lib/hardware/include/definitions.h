@@ -2,10 +2,15 @@
 #define ___DEFINITIONS___
 
 // PINS
-#define CS 1
-#define IRQ 2
-#define RST 3
-#define GPIO 4
+#define LORA_NSS   2     // SPI chip select
+#define LORA_RST   14    // Reset pin
+#define LORA_RXEN  16    // TXEN pin
+#define LORA_TXEN  17    // RXEN pin
+#define LORA_SCK   18    // SPI clock
+#define LORA_MISO  19    // SPI MISO
+#define LORA_MOSI  23    // SPI MOSI
+#define LORA_DIO1  26    // DIO1 interrupt
+#define LORA_BUSY  27    // BUSY pin
 
 // HW_FLAGS
 #define SUCCESS 0 
@@ -28,8 +33,8 @@
 #define P_DHCP  (0x3)
 
 // Hardware
-#define MAX_STORED_PACKETS 64
-#define MAX_NEIGHBOURS 256
+#define MAX_STORED_PACKETS (16)
+#define MAX_NEIGHBOURS (256)
 #define PAYLOAD_SIZE (256 - sizeof(packed_header))
 #define HEADER_SIZE (sizeof(packed_header))
 #define PACKET_SIZE (sizeof(packed_header) + ph.len)

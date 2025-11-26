@@ -1,5 +1,5 @@
-#include "dhcp.h"
-#include "../../hardware/packet_buffering.h"
+#include <dhcp/dhcp.h>
+#include <packet_buffering.h>
 
 static int req_random = 0;
 static int off_random = 0;
@@ -27,7 +27,7 @@ int DHCP_REQ(){
 
     packet p = packet_init(ph, payload);
 
-    enqueue(&to_send, p);
+    enqueue(&to_send, &p);
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
         return flags;
@@ -59,7 +59,7 @@ int DHCP_OFFER(byte* data){
 
     packet p = packet_init(ph, payload);
     
-    enqueue(&to_send, p);
+    enqueue(&to_send, &p);
 
     free(payload);
 
@@ -95,7 +95,7 @@ int DHCP_ACK(packet* p){
 
     *p = packet_init(p->h, send_data);
     
-    enqueue(&to_send, *p);
+    enqueue(&to_send, p);
 
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
@@ -126,7 +126,7 @@ int DHCP_FIN(packet* p){
     
     *p = packet_init(send, _data);
 
-    enqueue(&to_send, *p);
+    enqueue(&to_send, p);
 
     int flags;
     if (flags = get_hw_flags() != SUCCESS){
@@ -173,7 +173,7 @@ int DHCP_DENY(){
     req_random = 0;
 
     packet p = packet_init(ph, data);
-    enqueue(&to_send, p);
+    enqueue(&to_send, &p);
 
     DHCP_DROP();
 

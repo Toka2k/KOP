@@ -1,5 +1,5 @@
-#include "arp.h"
-#include "../../hardware/packet_buffering.h"
+#include <arp.h>
+#include <packet_buffering.h>
 
 int ECHO_REQ(addr address){
     unpacked_header uh = {address.address, __my_address.address, 0, 0, 1, P_ARP, 0};
@@ -8,7 +8,7 @@ int ECHO_REQ(addr address){
     byte data[1] = {0};
 
     packet p = packet_init(ph, data);
-    enqueue(&to_send, p);
+    enqueue(&to_send, &p);
     return SUCCESS; 
 }
 
@@ -20,7 +20,7 @@ int ECHO_REPLY(packet* p){
     p->h = PACK_HEADER(uh);
     *p = packet_init(p->h, p->data);
 
-    enqueue(&to_send, *p);
+    enqueue(&to_send, p);
 
     return SUCCESS;
 }

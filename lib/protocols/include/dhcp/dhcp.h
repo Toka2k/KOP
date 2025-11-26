@@ -1,9 +1,9 @@
 #ifndef ___DHCP___
 #define ___DHCP___
 
-#include "../../hardware/hardware.h"
-#include "../../hardware/address_table.h"
-#include "../../hardware/definitions.h"
+#include <hardware.h>
+#include <address_table.h>
+#include <definitions.h>
 
 #ifdef __cplusplus
 extern "C" {

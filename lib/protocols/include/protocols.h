@@ -1,11 +1,11 @@
 #ifndef ___PROTOCOLS___
 #define ___PROTOCOLS___
 
-#include "../hardware/hardware.h"
-#include "../hardware/address_table.h"
+#include <hardware.h>
+#include <address_table.h>
 
-#include "dhcp/dhcp.h"
-#include "arp/arp.h"
+#include <dhcp/dhcp.h>
+#include <arp/arp.h>
 
 #ifdef __cplusplus
 extern "C" {

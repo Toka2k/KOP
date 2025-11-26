@@ -1,17 +1,11 @@
 #ifndef ___ADDRESS_TABLE___
 #define ___ADDRESS_TABLE___
 
-#include "definitions.h"
+#include <definitions.h>
 #include <stdlib.h>
 
 #define tSize __table_size.size
 
-
-// If ICACHE_RAM_ATTR is defeined this function will be placed in instruction ram which is used
-// for time sensitivie functions
-/*#if defined(ESP8266) || defined(ESP32)
-    ICACHE_RAM_ATTR
-#endif*/
 #ifdef __cplusplus
 extern "C"{
 #endif
