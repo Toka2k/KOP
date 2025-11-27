@@ -5,7 +5,6 @@
 #define LORA_NSS   5     // SPI chip select
 #define LORA_RST   14    // Reset pin
 #define LORA_RXEN  16    // TXEN pin
-#define LORA_TXEN  17    // RXEN pin
 #define LORA_SCK   18    // SPI clock
 #define LORA_MISO  19    // SPI MISO
 #define LORA_MOSI  23    // SPI MOSI

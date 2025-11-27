@@ -1,9 +1,9 @@
 #include <hardware.h>
 #include <packet_buffering.h>
-#include "../../RadioLib/src/modules/LLCC68/LLCC68.h"
+#include <RadioLib.h>
 
 Module m = Module(LORA_NSS, LORA_DIO1, LORA_RST, LORA_BUSY);
-LLCC68 radio = LLCC68(&m);
+SX1262 radio = SX1262(&m);
 
 static int hw_flags = 0;
 double __channels[] = {8680E5};

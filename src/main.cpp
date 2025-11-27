@@ -26,23 +26,16 @@ void setup() {
     pinMode(2, OUTPUT);
     digitalWrite(2, LOW);
     
-    SPI.begin(18, 19, 23, 5);
+    SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
     
     // pins:
     pinMode(LORA_RXEN,  OUTPUT);
-    pinMode(LORA_TXEN,  OUTPUT);
     pinMode(LORA_NSS,   OUTPUT);
     pinMode(LORA_RST,   OUTPUT);
     pinMode(LORA_BUSY,  INPUT);
     pinMode(LORA_DIO1,  INPUT);
+    pinMode(LORA_RST, INPUT_PULLUP);
 
-    digitalWrite(LORA_RST, LOW);
-    delay(5);
-    digitalWrite(LORA_RST, HIGH);
-
-    pinMode(LORA_RST, INPUT);
-
-    delay(2000);
     int state = radio.begin(433.0, 125.0, 7, 4, RADIOLIB_SX126X_SYNC_WORD_PRIVATE, 33, 8, 0, false);
     if (state != RADIOLIB_ERR_NONE) {
         Serial.print("Init failed: ");
