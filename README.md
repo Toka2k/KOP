@@ -8,6 +8,9 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 
 ### Currently working on:
 - Working on E220-400M33S driver
+    - Allow custom settings
+    - Error checking
+    - Transmit(), Receive IRQ callback, Channel scanning.
 
 ### To do:
 - Modify functions to wait for getting packet back.
@@ -36,3 +39,4 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
     - Transmit and process task
 - E220-400M33S Driver
     - IRQ Table
+    - Basic functions
