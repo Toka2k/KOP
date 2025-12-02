@@ -3,12 +3,14 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 
 ### Hardware in use
 - esp32
-- EBYTE e220-433M33S Lora Module
+- EBYTE e220-400M33S Lora Module
 - 3dbi antena
 
 ### Currently working on:
-- Modify functions to wait for getting packet back.
+- Working on E220-400M33S driver
+
 ### To do:
+- Modify functions to wait for getting packet back.
 - DB 
     - DB download
     - updates
@@ -32,26 +34,5 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - Main Loop
     - Setup - ISR -> Receive, initialize tables, etc.
     - Transmit and process task
-
-
-### Development Diagrams
-
-Joining network:
-
-<img width="1220" height="181" alt="Join-Network" src="https://github.com/user-attachments/assets/56cce0eb-5ced-483c-afef-985f808b5c1e" />
-
-Joining Routing Network:
-
-<img width="914" height="771" alt="Join-Routing-Network" src="https://github.com/user-attachments/assets/58c78975-371b-4d13-ae15-e06b2dea4283" />
-
-Send Data:
-
-<img width="340" height="483" alt="Send-Data" src="https://github.com/user-attachments/assets/ad36591d-eea3-4c7c-acf6-694b309f34f9" />
-
-Choose Channel:
-
-<img width="724" height="350" alt="Choose-Channel" src="https://github.com/user-attachments/assets/75598ba1-f70a-476d-b9e7-356656bc87ba" />
-
-Browsing Channels:
-
-<img width="681" height="411" alt="Browsing-Channels" src="https://github.com/user-attachments/assets/32c5aef9-95b0-44c2-94a1-505d76438cd7" />
+- E220-400M33S Driver
+    - IRQ Table

@@ -21,6 +21,7 @@
 #define INVALID_PAYLOAD (1<<5)
 #define NOT_NEIGHBOUR (1<<6)
 #define EMPTY_BUF (1<<7)
+#define CHANNEL_FREE (1<<8)
 
 // generic errors
 #define NULL_POINTER -1; 
@@ -41,5 +42,15 @@
 #define RESERVED_ADDRESSES 2 
 #define ADDRESS_BITS 14
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
+
+#define IRQ_TX_DONE 0
+#define IRQ_RX_DONE 1
+#define IRQ_PREAMBLE_DETECTED 2
+#define IRQ_HEADER_VALID 4
+#define IRQ_HEADER_ERROR 5
+#define IRQ_CRC_ERROR 6
+#define IRQ_CAD_DONE 7
+#define IRQ_CAD_DETECTED 8
+#define IRQ_TIMEOUT 9
 
 #endif

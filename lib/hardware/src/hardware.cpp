@@ -1,9 +1,5 @@
 #include <hardware.h>
 #include <packet_buffering.h>
-#include <RadioLib.h>
-
-Module m = Module(LORA_NSS, LORA_DIO1, LORA_RST, LORA_BUSY);
-SX1262 radio = SX1262(&m);
 
 static int hw_flags = 0;
 double __channels[] = {8680E5};
@@ -111,11 +107,11 @@ void Receive(void){
     hw_flags = 0;
     packed_header ph = {0};
     // if we successfuly read data we continue
-    int state = radio.readData((byte*)&ph, sizeof(packed_header));
-    if (state != RADIOLIB_ERR_NONE){
+    int state = 0;//radio.readData((byte*)&ph, sizeof(packed_header));
+    if (state != SUCCESS){
         hw_flags |= ERROR;
-        radio.finishReceive();
-        radio.startReceive();
+        0;//radio.finishReceive();
+        0;//radio.startReceive();
         return;
     }
 
@@ -124,8 +120,8 @@ void Receive(void){
     //compare hmac
     if (*(unsigned short*)ph.hmac != HASH_PH(ph)){
         hw_flags |= INVALID_HASH; 
-        radio.finishReceive();
-        radio.startReceive();
+        0;//radio.finishReceive();
+        0;//radio.startReceive();
         return;
     }
 
@@ -147,8 +143,8 @@ void Receive(void){
 
     // if its not for me or local broadcast, we drop the packet
     if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
-        radio.finishReceive();
-        radio.startReceive();
+        0;//radio.finishReceive();
+        0;//radio.startReceive();
         return;
     }
     
@@ -157,8 +153,8 @@ void Receive(void){
     for(; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
     if (i == neighbours_size){
         hw_flags |= NOT_NEIGHBOUR;
-        radio.finishReceive();
-        radio.startReceive();
+        0;//radio.finishReceive();
+        0;//radio.startReceive();
         return; 
     }
 
@@ -167,19 +163,19 @@ void Receive(void){
         neighbour_seqnums[i]++;
     } else {
         hw_flags |= INVALID_SEQNUM;
-        radio.finishReceive();
-        radio.startReceive();
+        0;//radio.finishReceive();
+        0;//radio.startReceive();
         return;
     }
 
     byte data[ph.length];
-    state = radio.readData(data, ph.length);
+    state = 0;//radio.readData(data, ph.length);
  
     packet p = packet_init(ph, data);
  
     enqueue(&received, &p);
 
-    radio.startReceive();
+    0;//radio.startReceive();
     return;
 }
 
@@ -212,19 +208,19 @@ void Transmit(void* pvParameters){
         p.h.hmac[1] = hmac & 0xff;
 
         //scaning
-        while (radio.scanChannel() != RADIOLIB_CHANNEL_FREE){
+        while (/*radio.scanChannel() != */CHANNEL_FREE){
             sleep(random() % 11);
         }
 
-        int state = radio.transmit((char *)&p, p.h.length + HEADER_SIZE);
-        if (state != RADIOLIB_ERR_NONE){
+        int state = 0;//radio.transmit((char *)&p, p.h.length + HEADER_SIZE);
+        if (state != SUCCESS){
             hw_flags |= ERROR;
             dequeue(&to_send);
             continue;
         }
 
         dequeue(&to_send);
-        radio.startReceive();
+        //radio.startReceive();
         vTaskDelay(10);
     }
 }
@@ -334,3 +330,28 @@ int route(addr dest, byte length, byte protocol_id, byte* data){
     hw_flags = SUCCESS;
     return hw_flags;
 }
+
+//
+//      E220-400M33S Driver
+//
+
+// getPacketType()
+// setPacketType()
+// writeBuffer()
+// readBuffer()
+// writeRegister()
+// readRegister()
+// setBufferBaseAddress()
+// rxPayloadLength()
+// txPayloadLength()
+// setDio2AsRfSwitch()
+// calibrateImage()
+// calibrate()
+// setSleep()
+// setStandby()
+// setFs()
+// setTx()
+// setRx()
+// setCAD()
+
+
