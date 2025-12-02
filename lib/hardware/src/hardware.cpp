@@ -1,7 +1,14 @@
 #include <hardware.h>
+#include <SPI.h>
 #include <packet_buffering.h>
 
 static int hw_flags = 0;
+
+static unsigned short irq_status = 0;
+byte cmd[260] = {0}; 
+byte status = 0;
+SPISettings settings = SPISettings(4000000, MSBFIRST, SPI_MODE0);
+
 double __channels[] = {8680E5};
 static byte my_seqnums[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
@@ -335,23 +342,337 @@ int route(addr dest, byte length, byte protocol_id, byte* data){
 //      E220-400M33S Driver
 //
 
-// getPacketType()
-// setPacketType()
-// writeBuffer()
-// readBuffer()
-// writeRegister()
-// readRegister()
-// setBufferBaseAddress()
-// rxPayloadLength()
-// txPayloadLength()
-// setDio2AsRfSwitch()
-// calibrateImage()
-// calibrate()
-// setSleep()
-// setStandby()
-// setFs()
-// setTx()
-// setRx()
-// setCAD()
+byte available(){
+    if(digitalRead(LORA_BUSY) == 0){
+        return 1;
+    }
+    return 0;
+}
 
+int radio_init(){
+    // pins:
+    pinMode(LORA_RXEN,  INPUT_PULLDOWN);
+    pinMode(LORA_RST, INPUT_PULLUP);
+    pinMode(LORA_NSS,   OUTPUT);
+    pinMode(LORA_BUSY,  INPUT);
+    pinMode(LORA_DIO1,  INPUT);
 
+    SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
+
+    setStandby();
+    Serial.print("setStandby() -> "); Serial.print(cmd[0], HEX);
+    setPacketTypeLora();
+    setRfFrequency(434000000.0);
+    setPaConfig();
+    setTxParams();
+    setBufferBaseAddress();
+    setModulationParams();
+    setPacketParams();
+
+    return SUCCESS;
+}
+
+byte send_command(byte* cmd, byte cmdLen){
+    while (available() == 0) { vTaskDelay(500); Serial.println("Busy, delaying 1ms.");}
+
+    SPI.beginTransaction(settings);
+    digitalWrite(LORA_NSS, LOW);
+    SPI.transfer(cmd, cmdLen);
+    digitalWrite(LORA_NSS, HIGH);
+    SPI.endTransaction();
+
+    return SUCCESS;
+}
+// returns IRQ status
+unsigned short getIrqStatus(){
+    cmd[0] = 0x12;  cmd[2] = 0;
+    cmd[1] = 0;     cmd[3] = 0;
+    send_command(cmd, 4);
+    status = cmd[1];
+    return (cmd[2] << 8 | cmd[3]);
+}
+
+byte clearIrqStatus(){
+    cmd[0] = 0x02;
+    status = 0;
+    return send_command(cmd, 3);
+}
+
+byte setDio2AsRfSwitch(){
+    cmd[0] = 0x9D;
+    cmd[1] = 1;
+    return send_command(cmd, 2);
+}
+
+byte getPacketType(){
+    cmd[0] = 0x11;
+    cmd[1] = 0x00;
+    cmd[2] = 0x00;
+    send_command(cmd, 3);
+    status = cmd[1];
+    return cmd[2];
+}
+
+byte setPacketTypeLora(){
+    cmd[0] = 0x8A;
+    cmd[1] = 1;
+    return send_command(cmd, 2);
+}
+
+byte writeBuffer(byte* buf, byte buflen){
+    cmd[0] = 0x0E;
+    cmd[1] = 0;
+
+    for (int i = 0; i < buflen; i++){
+        cmd[i+2] = buf[i];
+    }
+
+    return send_command(cmd, buflen + 2);
+}
+
+byte readBuffer(byte* buf, byte buflen){
+    cmd[0] = 0x1E;
+
+    for (int i = 1; i < buflen + 3; i++){
+        cmd[i] = 0x00;
+    }
+
+    return send_command(cmd, buflen + 2);
+}
+
+byte writeRegister(byte* buf, byte buflen, unsigned short address){
+    cmd[0] = 0x1E;
+    cmd[1] = (address & 0xff00 >> 8);
+    cmd[2] = (address & 0xff);
+
+    for (int i = 0; i < buflen; i++){
+        cmd[i+3] = buf[i];
+    }
+
+    return send_command(cmd, buflen + 3);
+}
+
+byte readRegister(byte* buf, byte buflen, unsigned short address){
+    cmd[0] = 0x1E;
+    cmd[1] = (address & 0xff00 >> 8);
+    cmd[2] = (address & 0xff);
+
+    for (int i = 0; i < buflen + 1; i++){
+        cmd[i+3] = 0x00;
+    }
+
+    return send_command(cmd, buflen + 4);
+}
+
+byte setBufferBaseAddress(){
+    cmd[0] = 0x8f;
+    cmd[1] = 0;
+    cmd[2] = 0;
+    return send_command(cmd, 3);
+}
+
+byte rxPayloadLength(){
+    cmd[0] = 0x13;
+    for (int i = 0; i < 3; i++){
+        cmd[i + 1] = 0x00;
+    }
+
+    send_command(cmd, 4);
+
+    return cmd[2];
+}
+
+byte calibrateImage(){
+    cmd[0] = 0x98;
+    cmd[1] = 0x6B;
+    cmd[2] = 0x6F;
+
+    return send_command(cmd, 3);
+}
+
+byte calibrate(){
+    cmd[0] = 0x89;
+    cmd[1] = 0x7f;
+
+    return send_command(cmd, 2);
+}
+
+byte setSleep(){
+    setStandby();
+
+    cmd[0] = 0x84;
+    cmd[1] = 0x05;
+
+    return send_command(cmd, 2);
+}
+
+byte setStandby(){
+    cmd[0] = 0x80;
+    cmd[1] = 0;
+
+    return send_command(cmd, 2);
+}
+
+byte setFs(){
+    cmd[0] = 0xC1;
+
+    return send_command(cmd, 1);
+}
+
+byte setTx(){
+    cmd[0] = 0x83;
+    cmd[1] = 0x00;
+
+    return send_command(cmd, 2);
+}
+
+byte setRx(){
+    cmd[0] = 0x82;
+    cmd[1] = 0x00;
+
+    return send_command(cmd, 2);
+}
+
+byte setCAD(){
+    cmd[0] = 0xC5;
+
+    return send_command(cmd, 1);
+}
+
+byte stopTimerOnPreamble(){
+    cmd[0] = 0x9f;
+    cmd[1] = 0x01;
+
+    return send_command(cmd, 2);
+}
+
+// 0x40 = 1ms
+byte setRxDutyCycle(int rxPeriod, int sleepPeriod){
+    cmd[0] = 0x94;
+    cmd[1] = (rxPeriod & 0xff0000 >> 16);
+    cmd[2] = (rxPeriod & 0xff00 >> 8);
+    cmd[3] = (rxPeriod & 0xff);
+    cmd[4] = (sleepPeriod & 0xff0000 >> 16);
+    cmd[5] = (sleepPeriod & 0xff00 >> 8);
+    cmd[6] = (sleepPeriod & 0xff);
+
+    return send_command(cmd, 7);
+}
+
+byte setPaConfig(){
+    cmd[0] = 0x95;
+    cmd[1] = 0x04;
+    cmd[2] = 0x07;
+    cmd[3] = 0x00;
+    cmd[4] = 0x01;
+
+    return send_command(cmd, 5);
+}
+
+byte setRxTxFallbackMode(){
+    cmd[0] = 0x93;
+    cmd[1] = 0x20;
+
+    return send_command(cmd, 2);
+}
+
+byte enableIrq(){
+    cmd[0] = 0x08;
+    *(unsigned int*)(cmd + 1) = 0x7f70000;
+    *(unsigned int*)(cmd + 5) = 0x0;
+
+    return send_command(cmd, 9);
+}
+
+byte setRfFrequency(float freq){
+    cmd[0] = 0x86;
+    *(unsigned int*)(cmd + 1) = ((float)freq / (32e6 / 33554432.0) + 0.5f);
+
+    return send_command(cmd, 5);
+}
+
+byte setTxParams(){
+    cmd[0] = 0x8E;
+    cmd[1] = 0x16;
+    cmd[2] = 0x01;
+
+    return send_command(cmd, 3);
+}
+
+byte setModulationParams(){
+    cmd[0] = 0x8B;
+
+    cmd[1] = 0x07; // sf 5-11
+    cmd[2] = 0x04; // bw 125khz 250khz 500khz
+    cmd[3] = 0x01; // cr 4/5
+
+    for (int i = 4; i < 9; i++){
+        cmd[i] = 0x00;
+    }
+
+    return send_command(cmd, 9);
+}
+
+byte setPacketParams(){
+    cmd[0] = 0x8C;
+    cmd[1] = 0x00; // preamble symbol length = cmd[1]<<8 + cmd[2]
+    cmd[2] = 0x0C; //
+    cmd[3] = 0x01; // implicit header
+    cmd[4] = 0xff; // packet length
+
+    for (int i = 5; i < 10; i++){
+        cmd[i] = 0x00;
+    }
+    
+    return send_command(cmd, 10);
+}
+
+byte getStatus(){
+    cmd[0] = 0xC0;
+    cmd[1] = 0;
+
+    return send_command(cmd, 2);
+}
+
+byte getRSSI(){
+    cmd[0] = 0x14;
+    
+    for (int i = 1; i < 5; i++){
+        cmd[i] = 0x00;
+    }
+    
+    send_command(cmd, 5);
+    return (-cmd[2]/2);
+}
+
+byte getSNR(){
+    cmd[0] = 0x14;
+    
+    for (int i = 1; i < 5; i++){
+        cmd[i] = 0x00;
+    }
+    
+    send_command(cmd, 5);
+    return (cmd[3]/4);
+}
+
+byte getSignalRssi(){
+    cmd[0] = 0x14;
+    
+    for (int i = 1; i < 5; i++){
+        cmd[i] = 0x00;
+    }
+    
+    send_command(cmd, 5);
+    return (-cmd[4]/2);
+}
+
+byte getRssiInst(){
+    cmd[0] = 0x15;
+    cmd[1] = 0x00;
+    cmd[2] = 0x00;
+
+    send_command(cmd, 3);
+
+    return (-cmd[2]/2);
+}

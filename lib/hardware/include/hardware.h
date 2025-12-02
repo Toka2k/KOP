@@ -44,6 +44,9 @@ extern int (*protocols[256])(packet* p);
 extern addr neighbours[MAX_NEIGHBOURS];
 extern byte neighbours_size;
 
+extern byte cmd[260];
+extern byte status;
+
 int get_hw_flags();
 addr find_addr(addr address);
 void Receive(void);
@@ -55,6 +58,45 @@ unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
 void process_packet(void* pvParameters);
 int route(addr dest, byte length, byte protocol_id, byte* data);
+
+int radio_init();
+byte send_command(byte* cmd, byte cmdLen);
+byte available();
+byte clearIrqStatus();
+byte writeBuffer(byte* buf, byte buflen);
+byte readBuffer(byte* buf, byte buflen);
+byte writeRegister(byte* buf, byte buflen, unsigned short address);
+byte readRegister(byte* buf, byte buflen, unsigned short address);
+byte enableIrq();
+byte stopTimerOnPreamble();
+byte rxPayloadLength();
+byte calibrateImage();
+byte calibrate();
+
+byte setDio2AsRfSwitch();
+byte setPacketTypeLora();
+byte setBufferBaseAddress();
+byte setSleep();
+byte setStandby();
+byte setFs();
+byte setTx();
+byte setRx();
+byte setCAD();
+byte setRxDutyCycle(int rxPeriod, int sleepPeriod);
+byte setPaConfig();
+byte setRxTxFallbackMode();
+byte setRfFrequency(float freq);
+byte setTxParams();
+byte setModulationParams();
+byte setPacketParams();
+
+byte getPacketType();
+byte getStatus();
+byte getRSSI();
+byte getSNR();
+byte getSignalRssi();
+byte getRssiInst();
+unsigned short getIrqStatus();
 
 #ifdef __cplusplus
 }
