@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <SPI.h>
+#include <driver.h>
 #include <hardware.h>
 #include <packet_buffering.h>
 #include <protocols.h>
@@ -46,12 +47,7 @@ void setup() {
 
     Serial.print("Instant RSSI: "); Serial.println(getRssiInst());
 
-    setRfFrequency(434000000.0);
-    setPaConfig();
-    setTxParams();
-    setBufferBaseAddress();
-    setModulationParams();
-    setPacketParams();
+    radio_init(434000000.0, 0x16, 0x1, 0x7, 0x4, 0x1);
 
     if (getPacketType()){
         Serial.println("LoRa packet.");

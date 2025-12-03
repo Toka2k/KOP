@@ -23,6 +23,15 @@
 #define EMPTY_BUF (1<<7)
 #define CHANNEL_FREE (1<<8)
 
+// Driver Errors
+#define INVALID_SF (1)
+#define INVALID_BW (2)
+#define INVALID_CR (3)
+#define INVALID_POWER (4)
+#define INVALID_RAMPTIME (5)
+#define INVALID_FREQ (6)
+#define INVALID_MODE (7)
+
 // generic errors
 #define NULL_POINTER -1; 
 
@@ -43,6 +52,7 @@
 #define ADDRESS_BITS 14
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
 
+// IRQ Flags
 #define IRQ_TX_DONE 0
 #define IRQ_RX_DONE 1
 #define IRQ_PREAMBLE_DETECTED 2
