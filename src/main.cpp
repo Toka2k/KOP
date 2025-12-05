@@ -6,19 +6,31 @@
 #include <protocols.h>
 
 void my_loop(void* pvParameters);
+unsigned short irq_status = 0;
 
-void callback_check(void* pvParameters){
-    setRx();
+void radio_loop(void* pvParameters){
+    void (*callback)() = (void (*)())pvParameters;
+
     for(;;){
-        if(available() && rxPayloadLength() > 12 && getIrqStatus() & IRQ_RX_DONE){
-            Receive();
+        if (digitalRead(LORA_DIO1)){
+            while(xSemaphoreTake(radio_mutex, portMAX_DELAY) == 0){vTaskDelay(pdMS_TO_TICKS(1));}
+            irq_status = getIrqStatus();
+
+            if (irq_status & IRQ_RX_DONE){
+                
+                callback();
+            }
+
+            xSemaphoreGive(radio_mutex);
         }
-        vTaskDelay(1);
+        
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
 void setup() {
     __my_address.address = 1;
+
 
     Serial.begin(115200);
     digitalWrite(LORA_RST, LOW);
@@ -30,33 +42,16 @@ void setup() {
     
     Serial.println("Starting init...");
 
-    // pins:
-    pinMode(LORA_RXEN,  INPUT_PULLDOWN);
-    pinMode(LORA_RST, INPUT_PULLUP);
-    pinMode(LORA_NSS,   OUTPUT);
-    pinMode(LORA_BUSY,  INPUT);
-    pinMode(LORA_DIO1,  INPUT);
-
-    SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
-    setStandby();
-    Serial.print("setStandby() -> "); Serial.println(cmd[0], HEX);
-
-    setPacketTypeLora();
-    Serial.print("setPacketTypeLora() -> "); Serial.println(cmd[0], HEX);
-    
-
-    Serial.print("Instant RSSI: "); Serial.println(getRssiInst());
-
     radio_init(434000000.0, 0x16, 0x1, 0x7, 0x4, 0x1);
 
     if (getPacketType()){
         Serial.println("LoRa packet.");
     }
     
-    //xTaskCreatePinnedToCore(my_loop, "Ping pong task", 8192, NULL, 3, NULL, 0);
-    //xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 2, NULL, 1);
-    //xTaskCreatePinnedToCore(callback_check, "Radio Loop task", 4096, NULL, 3, NULL, 1);
-    //xTaskCreatePinnedToCore(process_packet, "Packet processing task", 2048, NULL, 3, NULL, 0);
+    //xTaskCreatePinnedToCore(my_loop, "Ping pong task", 8192, NULL, 1, NULL, 0);
+    //xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 3, NULL, 1);
+    //xTaskCreatePinnedToCore(radio_loop, "Radio Loop task", 4096, NULL, 2, NULL, 1);
+    //xTaskCreatePinnedToCore(process_packet, "Packet processing task", 2048, NULL, 2, NULL, 0);
 
     Serial.print("Everything successfuly initialized.");
 }
@@ -78,7 +73,7 @@ void my_loop(void* pvParamaters){
             Serial.println(uh.mac_s);
         }
 
-        vTaskDelay(500);
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 

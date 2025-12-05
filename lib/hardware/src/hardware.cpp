@@ -9,6 +9,8 @@ static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
 addr neighbours[MAX_NEIGHBOURS] = {0};
 byte neighbours_size = 0;
 
+SemaphoreHandle_t radio_mutex;
+
 // First set of magic numbers, is for hosts
 // Second set of magic numbers, is for routers
 byte secret[2][SECRET_COUNT] = {{19},{11}};
@@ -106,13 +108,21 @@ void sort_neighbours(){
 
 void Receive(void){
     hw_flags = 0;
+    byte packet_length = getRxPayloadLength();
+    if(packet_length == 1){
+        readBuffer(&packet_length, 1);
+        setPacketParams(packet_length);
+        radio_cleanup(IRQ_RX_DONE);
+    } else {
+        setPacketParams(1);
+    }
+
     packed_header ph = {0};
     // if we successfuly read data we continue
-    int state = 0;//radio.readData((byte*)&ph, sizeof(packed_header));
+    int state = readBuffer((byte*)&ph, sizeof(packed_header));
     if (state != SUCCESS){
         hw_flags |= ERROR;
-        0;//radio.finishReceive();
-        0;//radio.startReceive();
+        radio_cleanup(IRQ_RX_DONE);
         return;
     }
 
@@ -121,8 +131,7 @@ void Receive(void){
     //compare hmac
     if (*(unsigned short*)ph.hmac != HASH_PH(ph)){
         hw_flags |= INVALID_HASH; 
-        0;//radio.finishReceive();
-        0;//radio.startReceive();
+        radio_cleanup(IRQ_RX_DONE);
         return;
     }
 
@@ -144,18 +153,16 @@ void Receive(void){
 
     // if its not for me or local broadcast, we drop the packet
     if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
-        0;//radio.finishReceive();
-        0;//radio.startReceive();
+        radio_cleanup(IRQ_RX_DONE);
         return;
     }
     
     //compare seqnum
     int i = 0;
-     for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
+    for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
     if (i == neighbours_size){
         hw_flags |= NOT_NEIGHBOUR;
-        0;//radio.finishReceive();
-        0;//radio.startReceive();
+        radio_cleanup(IRQ_RX_DONE);
         return; 
     }
 
@@ -164,19 +171,18 @@ void Receive(void){
         neighbour_seqnums[i]++;
     } else {
         hw_flags |= INVALID_SEQNUM;
-        0;//radio.finishReceive();
-        0;//radio.startReceive();
+        radio_cleanup(IRQ_RX_DONE);
         return;
     }
 
     byte data[ph.length];
-    state = 0;//radio.readData(data, ph.length);
+    state = readBuffer(data, ph.length);
  
     packet p = packet_init(ph, data);
  
     enqueue(&received, &p);
 
-    0;//radio.startReceive();
+    radio_cleanup(IRQ_RX_DONE);
     return;
 }
 
@@ -187,8 +193,11 @@ void Transmit(void* pvParameters){
         //read packet from queue
         if (to_send.count == 0){
             hw_flags |= EMPTY_BUF;
+            vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
+        while(xSemaphoreTake(radio_mutex, portMAX_DELAY) == 0){vTaskDelay(pdMS_TO_TICKS(1));}
+
         packet p = *to_send.buf[to_send.index];
 
         //increment seqnum;
@@ -196,7 +205,10 @@ void Transmit(void* pvParameters){
          for (; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
         if (i == MAX_NEIGHBOURS){
             hw_flags |= NOT_NEIGHBOUR;
+            radio_cleanup(0xff);
             dequeue(&to_send);
+            xSemaphoreGive(radio_mutex);
+            vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
 
@@ -209,20 +221,24 @@ void Transmit(void* pvParameters){
         p.h.hmac[1] = hmac & 0xff;
 
         //scaning
-        while (/*radio.scanChannel() != */CHANNEL_FREE){
-            sleep(random() % 11);
+        while (radio_scanChannel() != IRQ_CAD_DETECTED){
+            delay(random() % 11);
         }
 
-        int state = 0;//radio.transmit((char *)&p, p.h.length + HEADER_SIZE);
-        if (state != SUCCESS){
+        unsigned short state = radio_transmit(&p);
+        if (state != IRQ_TX_DONE){
             hw_flags |= ERROR;
+            radio_cleanup(0xff);
             dequeue(&to_send);
+            xSemaphoreGive(radio_mutex);
+            vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
 
         dequeue(&to_send);
-        //radio.startReceive();
-        vTaskDelay(10);
+        radio_cleanup(IRQ_TX_DONE);
+        xSemaphoreGive(radio_mutex);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

@@ -7,7 +7,6 @@
 //
 
 SPISettings settings = SPISettings(4000000, MSBFIRST, SPI_MODE0);
-static unsigned short irq_status = 0;
 byte cmd[260] = {0}; 
 byte status = 0;
 
@@ -16,6 +15,40 @@ byte available(){
         return 1;
     }
     return 0;
+}
+
+void radio_cleanup(unsigned short clearIrqParam){
+    setStandby();
+    clearIrqStatus(clearIrqParam);
+    setBufferBaseAddress();
+    setRxDutyCycle(0xC0, 0xC0);
+
+    return;
+}
+
+unsigned short radio_transmit(packet* p){
+    unsigned short state = 0;
+    // First we have to send packet length, that other nodes expect
+    // than we send the actual packet
+    if ( state = setBufferBaseAddress() != SUCCESS ) { return state; }
+    if ( state = writeBuffer(&p->h.length, 1) != SUCCESS) { return state; };
+    if ( state = setPacketParams(1) != SUCCESS ) { return state; }
+    setTx();
+    if ( state = setBufferBaseAddress() != SUCCESS ) { return state; }
+    if ( state = writeBuffer((byte*)p, p->h.length + HEADER_SIZE) != SUCCESS) { return state; };
+    if ( state = setPacketParams(p->h.length + HEADER_SIZE) != SUCCESS ) { return state; }
+    setTx();
+    return getIrqStatus();
+}
+
+unsigned short radio_scanChannel(){
+    clearIrqStatus(IRQ_CAD_DONE | IRQ_CAD_DETECTED);
+    setCAD();
+    unsigned short state = 0;
+    while(state != IRQ_CAD_DONE){
+        getIrqStatus();
+    }
+    return state;
 }
 
 int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr){
@@ -36,7 +69,7 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
     if ( state = setTxParams(power, ramptime) != SUCCESS ) { return state; } 
     if ( state = setBufferBaseAddress() != SUCCESS ) { return state; } 
     if ( state = setModulationParams(sf, bw, cr) != SUCCESS ) { return state; } 
-    if ( state = setPacketParams() != SUCCESS ) { return state; } 
+    if ( state = setPacketParams(1) != SUCCESS ) { return state; } 
 
     return SUCCESS;
 }
@@ -61,8 +94,10 @@ byte enableIrq(){
     return send_command(cmd, 9);
 }
 
-byte clearIrqStatus(){
+byte clearIrqStatus(unsigned short clearIrqParam){
     cmd[0] = 0x02;
+    cmd[1] = clearIrqParam >> 8 & 0xff;
+    cmd[2] = clearIrqParam & 0xff;
     status = 0;
     return send_command(cmd, 3);
 }
@@ -139,6 +174,19 @@ byte stopTimerOnPreamble(){
 //
 //  Setters
 //
+
+byte setCadParameters(byte cadDetMin, byte cadDetMax, byte cadSymNum){
+    cmd[0] = 0x88;
+    cmd[1] = cadSymNum; // cad symbol lendth search
+    cmd[2] = cadDetMin;
+    cmd[3] = cadDetMax;
+    cmd[4] = 0x00; // 0x00=STDBY_RC 0x01=RX
+    cmd[5] = 0x00;
+    cmd[6] = 0x02;
+    cmd[7] = 0x80;
+    
+    return send_command(cmd, 8);
+}
 
 byte setBufferBaseAddress(){
     cmd[0] = 0x8f;
@@ -220,6 +268,7 @@ byte setPaConfig(){
     // setting Over Current Protection - 2,5mA steps
     cmd[5] = 0xFF;
     writeRegister(cmd+5, 1, 0x08E7);
+    return state;
 }
 
 byte setRxTxFallbackMode(byte mode){
@@ -257,6 +306,24 @@ byte setModulationParams(byte sf, byte bw, byte cr){
     if (bw < 0x4 || bw > 0x6) { return INVALID_BW; }
     if (cr < 0x1 || cr > 0x4) { return INVALID_CR; }
 
+    switch(sf){
+        case 0x5:
+        case 0x6:
+        case 0x7: 
+        case 0x8:
+            setCadParameters(10, 22, 2);
+            break;
+        case 0x9:
+            setCadParameters(10, 23, 4);
+            break;
+        case 0xA:
+            setCadParameters(10, 24, 4);
+            break;
+        case 0xB:
+            setCadParameters(10, 25, 4);
+            break;
+    }
+
     cmd[0] = 0x8B;
 
     cmd[1] = sf; // sf 5-11
@@ -272,12 +339,12 @@ byte setModulationParams(byte sf, byte bw, byte cr){
     return send_command(cmd, 9);
 }
 
-byte setPacketParams(){
+byte setPacketParams(byte packet_length){
     cmd[0] = 0x8C;
     cmd[1] = 0x00; // preamble symbol length = cmd[1]<<8 + cmd[2]
     cmd[2] = 0x0C; //
     cmd[3] = 0x01; // implicit header
-    cmd[4] = 0xff; // packet length
+    cmd[4] = packet_length; // packet length
 
     for (int i = 5; i < 10; i++){
         cmd[i] = 0x00;

@@ -7,13 +7,9 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - 3dbi antena
 
 ### Currently working on:
-- Working on E220-400M33S driver
-    - Allow custom settings
-    - Error checking
-    - Transmit(), Receive IRQ callback, Channel scanning.
+- Testing E220-400M33S driver and communication between two modules.
 
 ### To do:
-- Modify functions to wait for getting packet back.
 - DB 
     - DB download
     - updates
@@ -40,3 +36,6 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - E220-400M33S Driver
     - IRQ Table
     - Basic functions
+    - Allow custom settings
+    - Transmit(), Receive IRQ callback, Channel scanning.
+    - Error checking

@@ -2,16 +2,11 @@
 #define ___PACKET_BUFFERING___
 
 #include <hardware.h>
+#include <definitions.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct __attribute__((packed)){
-    packet (*buf)[MAX_STORED_PACKETS];
-    byte count;
-    byte index;
-} buf_head;
 
 extern buf_head received;
 extern buf_head to_send;

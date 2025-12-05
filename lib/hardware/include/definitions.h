@@ -31,6 +31,7 @@
 #define INVALID_RAMPTIME (5)
 #define INVALID_FREQ (6)
 #define INVALID_MODE (7)
+#define INVALID_BUF_LENGTH (8)
 
 // generic errors
 #define NULL_POINTER -1; 
@@ -44,23 +45,82 @@
 // Hardware
 #define MAX_STORED_PACKETS (16)
 #define MAX_NEIGHBOURS (256)
-#define PAYLOAD_SIZE (256 - sizeof(packed_header))
-#define HEADER_SIZE (sizeof(packed_header))
-#define PACKET_SIZE (sizeof(packed_header) + ph.len)
+#define PAYLOAD_SIZE (256 - HEADER_SIZE)
+#define HEADER_SIZE (12)
 
 #define RESERVED_ADDRESSES 2 
 #define ADDRESS_BITS 14
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
 
 // IRQ Flags
-#define IRQ_TX_DONE 0
-#define IRQ_RX_DONE 1
-#define IRQ_PREAMBLE_DETECTED 2
-#define IRQ_HEADER_VALID 4
-#define IRQ_HEADER_ERROR 5
-#define IRQ_CRC_ERROR 6
-#define IRQ_CAD_DONE 7
-#define IRQ_CAD_DETECTED 8
-#define IRQ_TIMEOUT 9
+#define IRQ_TX_DONE (1)
+#define IRQ_RX_DONE (1<<1)
+#define IRQ_PREAMBLE_DETECTED (1<<2)
+#define IRQ_HEADER_VALID (1<<4)
+#define IRQ_HEADER_ERROR (1<<5)
+#define IRQ_CRC_ERROR (1<<6)
+#define IRQ_CAD_DONE (1<<7)
+#define IRQ_CAD_DETECTED (1<<8)
+#define IRQ_TIMEOUT (1<<9)
+
+typedef unsigned char byte;
+
+typedef struct __attribute__((packed)){
+    unsigned short mac_d : 14;
+    unsigned short mac_s : 14;
+    unsigned short net_d : 14;
+    unsigned short net_s : 14;
+    byte length;
+    byte protocol_id;
+    byte seqnum;
+    byte hmac[2];
+} unpacked_header;
+
+typedef struct __attribute__((packed)){
+    byte addresses[7];
+    byte length;
+    byte protocol_id;
+    byte seqnum;
+    byte hmac[2];
+} packed_header; 
+
+typedef struct __attribute__((packed)){
+    packed_header h;
+    byte data[PAYLOAD_SIZE];
+} packet;
+
+enum Channels{
+    DEFCHANNEL = 0
+};
+
+typedef struct __attribute__((packed)){
+    unsigned hcost : 2;
+    unsigned haddress : 6;
+    unsigned lcost : 2;
+    unsigned hnextHop : 6;
+    byte cost;
+    byte laddress;
+    byte lnextHop;
+} unit;
+
+typedef struct __attribute__((packed)){
+    unsigned short int UPDATE_WHEN_ADD : 1;
+    unsigned short int REMOVE_WITH_ADDRESS : 1;
+    unsigned short int REMOVE_WITH_NEXTHOP : 1;
+} flags;
+
+typedef struct __attribute__((packed)){
+    unsigned short int size: ADDRESS_BITS;
+} size;
+
+typedef struct __attribute__((packed)){
+    unsigned short address: ADDRESS_BITS;
+} addr;
+
+typedef struct __attribute__((packed)){
+    packet (*buf)[MAX_STORED_PACKETS];
+    byte count;
+    byte index;
+} buf_head;
 
 #endif

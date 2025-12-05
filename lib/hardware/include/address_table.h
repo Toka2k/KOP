@@ -10,32 +10,6 @@
 extern "C"{
 #endif
 
-typedef unsigned char byte;
-
-typedef struct __attribute__((packed)){
-    unsigned hcost : 2;
-    unsigned haddress : 6;
-    unsigned lcost : 2;
-    unsigned hnextHop : 6;
-    byte cost;
-    byte laddress;
-    byte lnextHop;
-} unit;
-
-typedef struct __attribute__((packed)){
-    unsigned short int UPDATE_WHEN_ADD : 1;
-    unsigned short int REMOVE_WITH_ADDRESS : 1;
-    unsigned short int REMOVE_WITH_NEXTHOP : 1;
-} flags;
-
-typedef struct __attribute__((packed)){
-    unsigned short int size: ADDRESS_BITS;
-} size;
-
-typedef struct __attribute__((packed)){
-    unsigned short address: ADDRESS_BITS;
-} addr;
-
 extern unit null;
 extern flags FLAGS;
 extern size __table_size;
