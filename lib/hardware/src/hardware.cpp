@@ -202,7 +202,7 @@ void Transmit(void* pvParameters){
 
         //increment seqnum;
         int i = 0;
-         for (; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
+        for (; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
         if (i == MAX_NEIGHBOURS){
             hw_flags |= NOT_NEIGHBOUR;
             radio_cleanup(0xff);

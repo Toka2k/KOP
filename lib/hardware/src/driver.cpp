@@ -30,13 +30,13 @@ unsigned short radio_transmit(packet* p){
     unsigned short state = 0;
     // First we have to send packet length, that other nodes expect
     // than we send the actual packet
-    if ( state = setBufferBaseAddress() != SUCCESS ) { return state; }
-    if ( state = writeBuffer(&p->h.length, 1) != SUCCESS) { return state; };
-    if ( state = setPacketParams(1) != SUCCESS ) { return state; }
+    if ( (state = setBufferBaseAddress()) != SUCCESS ) { return state; }
+    if ( (state = writeBuffer(&p->h.length, 1)) != SUCCESS) { return state; };
+    if ( (state = setPacketParams(1)) != SUCCESS ) { return state; }
     setTx();
-    if ( state = setBufferBaseAddress() != SUCCESS ) { return state; }
-    if ( state = writeBuffer((byte*)p, p->h.length + HEADER_SIZE) != SUCCESS) { return state; };
-    if ( state = setPacketParams(p->h.length + HEADER_SIZE) != SUCCESS ) { return state; }
+    if ( (state = setBufferBaseAddress()) != SUCCESS ) { return state; }
+    if ( (state = writeBuffer((byte*)p, p->h.length + HEADER_SIZE)) != SUCCESS) { return state; }
+    if ( (state = setPacketParams(p->h.length + HEADER_SIZE)) != SUCCESS ) { return state; }
     setTx();
     return getIrqStatus();
 }
@@ -53,7 +53,7 @@ unsigned short radio_scanChannel(){
 
 int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr){
     // pins:
-    pinMode(LORA_RXEN,  INPUT_PULLDOWN);
+    pinMode(LORA_RXEN,  OUTPUT);
     pinMode(LORA_RST, INPUT_PULLUP);
     pinMode(LORA_NSS,   OUTPUT);
     pinMode(LORA_BUSY,  INPUT);
@@ -62,14 +62,15 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
     SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
 
     int state = 0; 
-    if ( state = setStandby() != SUCCESS ) { return state; } 
-    if ( state = setPacketTypeLora() != SUCCESS ) { return state; } 
-    if ( state = setRfFrequency(freq) != SUCCESS ) { return state; } 
-    if ( state = setPaConfig() != SUCCESS ) { return state; } 
-    if ( state = setTxParams(power, ramptime) != SUCCESS ) { return state; } 
-    if ( state = setBufferBaseAddress() != SUCCESS ) { return state; } 
-    if ( state = setModulationParams(sf, bw, cr) != SUCCESS ) { return state; } 
-    if ( state = setPacketParams(1) != SUCCESS ) { return state; } 
+    if ( (state = setStandby()) != SUCCESS ) { return state; } 
+    if ( (state = setPacketTypeLora()) != SUCCESS ) { return state; } 
+    if ( (state = setRfFrequency(freq)) != SUCCESS ) { return state; } 
+    if ( (state = setPaConfig()) != SUCCESS ) { return state; }
+    if ( (state = setDio2AsRfSwitch()) != SUCCESS ) { return state; }
+    if ( (state = setTxParams(power, ramptime)) != SUCCESS ) { return state; } 
+    if ( (state = setBufferBaseAddress()) != SUCCESS ) { return state; } 
+    if ( (state = setModulationParams(sf, bw, cr)) != SUCCESS ) { return state; } 
+    if ( (state = setPacketParams(1)) != SUCCESS ) { return state; } 
 
     return SUCCESS;
 }
@@ -88,8 +89,14 @@ byte send_command(byte* cmd, byte cmdLen){
 
 byte enableIrq(){
     cmd[0] = 0x08;
-    *(unsigned int*)(cmd + 1) = 0x7f70000;
-    *(unsigned int*)(cmd + 5) = 0x0;
+    cmd[1] = 0b11110111;
+    cmd[2] = 0b11;
+    cmd[3] = 0b1;
+    cmd[4] = 0b0;
+    cmd[5] = 0x0;
+    cmd[6] = 0x0;
+    cmd[7] = 0x0;
+    cmd[8] = 0x0;
 
     return send_command(cmd, 9);
 }
@@ -224,6 +231,7 @@ byte setFs(){
 }
 
 byte setTx(){
+    digitalWrite(LORA_RXEN, LOW);
     cmd[0] = 0x83;
     cmd[1] = 0x00;
 
@@ -231,6 +239,7 @@ byte setTx(){
 }
 
 byte setRx(){
+    digitalWrite(LORA_RXEN, HIGH);
     cmd[0] = 0x82;
     cmd[1] = 0x00;
 
