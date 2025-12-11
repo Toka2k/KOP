@@ -8,17 +8,9 @@
 
 SPISettings settings = SPISettings(4000000, MSBFIRST, SPI_MODE0);
 byte cmd[260] = {0}; 
-byte status = 0;
-
-byte available(){
-    if (digitalRead(LORA_BUSY) == 0){
-        return 1;
-    }
-    return 0;
-}
 
 void radio_cleanup(unsigned short clearIrqParam){
-    setStandby();
+    setStandby(1);
     clearIrqStatus(clearIrqParam);
     setBufferBaseAddress();
     setRxDutyCycle(0xC0, 0xC0);
@@ -62,17 +54,29 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
     SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
 
     int state = 0; 
-    if ( (state = setStandby()) != SUCCESS ) { return state; } 
+    if ( (state = setStandby(STDBY_RC)) != SUCCESS ) { return state; } 
     if ( (state = setPacketTypeLora()) != SUCCESS ) { return state; } 
+    if ( (state = setModulationParams(sf, bw, cr)) != SUCCESS ) { return state; } 
+    if ( (state = setPacketParams(STDBY_RC)) != SUCCESS ) { return state; } 
     if ( (state = setRfFrequency(freq)) != SUCCESS ) { return state; } 
     if ( (state = setPaConfig()) != SUCCESS ) { return state; }
-    if ( (state = setDio2AsRfSwitch()) != SUCCESS ) { return state; }
     if ( (state = setTxParams(power, ramptime)) != SUCCESS ) { return state; } 
     if ( (state = setBufferBaseAddress()) != SUCCESS ) { return state; } 
-    if ( (state = setModulationParams(sf, bw, cr)) != SUCCESS ) { return state; } 
-    if ( (state = setPacketParams(1)) != SUCCESS ) { return state; } 
+    if ( (state = setDioIrqParams(0x3f7, 0x1)) != SUCCESS ) { return state; } 
+    if ( (state = setDio2AsRfSwitch()) != SUCCESS ) { return state; }
 
     return SUCCESS;
+}
+
+//
+// BAREBONE FUNCTIONS
+//
+
+byte available(){
+    if (digitalRead(LORA_BUSY) == 0){
+        return 1;
+    }
+    return 0;
 }
 
 byte send_command(byte* cmd, byte cmdLen){
@@ -87,31 +91,16 @@ byte send_command(byte* cmd, byte cmdLen){
     return SUCCESS;
 }
 
-byte enableIrq(){
-    cmd[0] = 0x08;
-    cmd[1] = 0b11110111;
-    cmd[2] = 0b11;
-    cmd[3] = 0b1;
-    cmd[4] = 0b0;
-    cmd[5] = 0x0;
-    cmd[6] = 0x0;
-    cmd[7] = 0x0;
-    cmd[8] = 0x0;
-
-    return send_command(cmd, 9);
-}
-
 byte clearIrqStatus(unsigned short clearIrqParam){
     cmd[0] = 0x02;
-    cmd[1] = clearIrqParam >> 8 & 0xff;
+    cmd[1] = clearIrqParam >> 8;
     cmd[2] = clearIrqParam & 0xff;
-    status = 0;
     return send_command(cmd, 3);
 }
 
 byte writeBuffer(byte* buf, byte buflen){
     cmd[0] = 0x0E;
-    cmd[1] = 0;
+    cmd[1] = 0; // offset
 
     for (int i = 0; i < buflen; i++){
         cmd[i+2] = buf[i];
@@ -122,18 +111,26 @@ byte writeBuffer(byte* buf, byte buflen){
 
 byte readBuffer(byte* buf, byte buflen){
     cmd[0] = 0x1E;
+    cmd[1] = 0x00; // offset
+    cmd[2] = 0x00; // nop
 
-    for (int i = 1; i < buflen + 3; i++){
-        cmd[i] = 0x00;
+    for (int i = 0; i < buflen; i++){
+        cmd[i+3] = 0x00;
     }
 
-    return send_command(cmd, buflen + 2);
+    byte state = send_command(cmd, buflen + 3);
+
+    for(int i = 0; i < buflen; i++){
+        buf[i] = cmd[i+3];
+    }
+
+    return state;
 }
 
 byte writeRegister(byte* buf, byte buflen, unsigned short address){
-    cmd[0] = 0x1E;
-    cmd[1] = (address & 0xff00 >> 8);
-    cmd[2] = (address & 0xff);
+    cmd[0] = 0x0D;
+    cmd[1] = address >> 8;
+    cmd[2] = address & 0xff;
 
     for (int i = 0; i < buflen; i++){
         cmd[i+3] = buf[i];
@@ -143,15 +140,22 @@ byte writeRegister(byte* buf, byte buflen, unsigned short address){
 }
 
 byte readRegister(byte* buf, byte buflen, unsigned short address){
-    cmd[0] = 0x1E;
-    cmd[1] = (address & 0xff00 >> 8);
-    cmd[2] = (address & 0xff);
+    cmd[0] = 0x1D;
+    cmd[1] = address >> 8;
+    cmd[2] = address & 0xff;
+    cmd[3] = 0x00;
 
-    for (int i = 0; i < buflen + 1; i++){
-        cmd[i+3] = 0x00;
+    for (int i = 0; i < buflen; i++){
+        cmd[i+4] = 0x00;
     }
 
-    return send_command(cmd, buflen + 4);
+    byte state = send_command(cmd, buflen + 4);
+
+    for (int i = 0; i < buflen; i++){
+        buf[i] = cmd[i+4];
+    }
+
+    return state;
 }
 
 byte calibrateImage(){
@@ -164,12 +168,86 @@ byte calibrateImage(){
 }
 
 byte calibrate(){
+    setStandby(STDBY_RC);
     // calibrate all blocks of llcc68
     cmd[0] = 0x89;
     cmd[1] = 0x7f;
 
     return send_command(cmd, 2);
 }
+
+//
+// Modes
+//
+
+byte setSleep(){
+    setStandby(STDBY_RC);
+
+    cmd[0] = 0x84;
+    cmd[1] = 0x05;
+
+    return send_command(cmd, 2);
+}
+
+byte setStandby(byte mode){
+    cmd[0] = 0x80;
+    if (mode != STDBY_RC && mode != STDBY_XOSC){
+        return INVALID_MODE;
+    }
+
+    cmd[1] = mode; // STDBY_RC = 0, STDBY_XOSC = 1
+
+    return send_command(cmd, 2);
+}
+
+byte setFs(){
+    cmd[0] = 0xC1;
+
+    return send_command(cmd, 1);
+}
+
+byte setTx(){
+    digitalWrite(LORA_RXEN, LOW);
+    cmd[0] = 0x83;
+    cmd[1] = 0x00;
+    cmd[2] = 0x64;
+    cmd[3] = 0x00;
+
+    return send_command(cmd, 4);
+}
+
+byte setRx(){
+    digitalWrite(LORA_RXEN, HIGH);
+    cmd[0] = 0x82;
+    cmd[1] = 0x00;
+    cmd[2] = 0x00;
+    cmd[4] = 0x00;
+
+    return send_command(cmd, 4);
+}
+
+byte setCAD(){
+    cmd[0] = 0xC5;
+
+    return send_command(cmd, 1);
+}
+
+byte setRxDutyCycle(int rxPeriod, int sleepPeriod){
+    // 15,625 us steps
+    cmd[0] = 0x94;
+    cmd[1] = (rxPeriod >> 16);
+    cmd[2] = (rxPeriod >> 8);
+    cmd[3] = (rxPeriod);
+    cmd[4] = (sleepPeriod >> 16);
+    cmd[5] = (sleepPeriod >> 8);
+    cmd[6] = (sleepPeriod);
+
+    return send_command(cmd, 7);
+}
+
+//
+// Configuration
+//
 
 byte stopTimerOnPreamble(){
     cmd[0] = 0x9f;
@@ -178,19 +256,30 @@ byte stopTimerOnPreamble(){
     return send_command(cmd, 2);
 }
 
-//
-//  Setters
-//
+byte setDioIrqParams(unsigned short irq_mask, unsigned short dio1_mask){
+    cmd[0] = 0x08;
+    short irqMask = 0x03f7;
+    cmd[1] = (irq_mask >> 8);
+    cmd[2] = (irq_mask & 0xff);
+    cmd[3] = (dio1_mask >> 8);
+    cmd[4] = (irqMask & 0xff);
+    cmd[5] = 0x0;
+    cmd[6] = 0x0;
+    cmd[7] = 0x0;
+    cmd[8] = 0x0;
 
-byte setCadParameters(byte cadDetMin, byte cadDetMax, byte cadSymNum){
+    return send_command(cmd, 9);
+}
+
+byte setCadParams(byte cadDetMin, byte cadDetMax, byte cadSymNum){
     cmd[0] = 0x88;
     cmd[1] = cadSymNum; // cad symbol lendth search
     cmd[2] = cadDetMin;
     cmd[3] = cadDetMax;
     cmd[4] = 0x00; // 0x00=STDBY_RC 0x01=RX
-    cmd[5] = 0x00;
-    cmd[6] = 0x02;
-    cmd[7] = 0x80;
+    cmd[5] = 0x00; // timeout[0] MSB
+    cmd[6] = 0x02; // timeout[1]
+    cmd[7] = 0x80; // timeout[2] LSB
     
     return send_command(cmd, 8);
 }
@@ -206,63 +295,6 @@ byte setDio2AsRfSwitch(){
     cmd[0] = 0x9D;
     cmd[1] = 1;
     return send_command(cmd, 2);
-}
-
-byte setSleep(){
-    setStandby();
-
-    cmd[0] = 0x84;
-    cmd[1] = 0x05;
-
-    return send_command(cmd, 2);
-}
-
-byte setStandby(){
-    cmd[0] = 0x80;
-    cmd[1] = 0;
-
-    return send_command(cmd, 2);
-}
-
-byte setFs(){
-    cmd[0] = 0xC1;
-
-    return send_command(cmd, 1);
-}
-
-byte setTx(){
-    digitalWrite(LORA_RXEN, LOW);
-    cmd[0] = 0x83;
-    cmd[1] = 0x00;
-
-    return send_command(cmd, 2);
-}
-
-byte setRx(){
-    digitalWrite(LORA_RXEN, HIGH);
-    cmd[0] = 0x82;
-    cmd[1] = 0x00;
-
-    return send_command(cmd, 2);
-}
-
-byte setCAD(){
-    cmd[0] = 0xC5;
-
-    return send_command(cmd, 1);
-}
-
-byte setRxDutyCycle(int rxPeriod, int sleepPeriod){
-    // 15,625 us steps
-    cmd[0] = 0x94;
-    cmd[1] = (rxPeriod & 0xff0000 >> 16);
-    cmd[2] = (rxPeriod & 0xff00 >> 8);
-    cmd[3] = (rxPeriod & 0xff);
-    cmd[4] = (sleepPeriod & 0xff0000 >> 16);
-    cmd[5] = (sleepPeriod & 0xff00 >> 8);
-    cmd[6] = (sleepPeriod & 0xff);
-
-    return send_command(cmd, 7);
 }
 
 byte setPaConfig(){
@@ -283,6 +315,10 @@ byte setPaConfig(){
 byte setRxTxFallbackMode(byte mode){
     if (mode != 0x20 || mode != 0x30 || mode != 0x40) { return INVALID_MODE; }
 
+    // 0x20 STDBY_RC    
+    // 0x30 STDBY_XOSC     
+    // 0x40 FS
+
     cmd[0] = 0x93;
     cmd[1] = mode;
 
@@ -299,7 +335,7 @@ byte setRfFrequency(float freq){
 
 byte setTxParams(byte power, byte ramptime){
 
-    if (power <= 0xF7 || power >= 0x16) { return INVALID_POWER; }
+    if (power < 0xF7 || power > 0x16) { return INVALID_POWER; }
     if (ramptime > 0x07) { return INVALID_RAMPTIME; }
 
 
@@ -320,16 +356,16 @@ byte setModulationParams(byte sf, byte bw, byte cr){
         case 0x6:
         case 0x7: 
         case 0x8:
-            setCadParameters(10, 22, 2);
+            setCadParams(10, 22, 2);
             break;
         case 0x9:
-            setCadParameters(10, 23, 4);
+            setCadParams(10, 23, 4);
             break;
         case 0xA:
-            setCadParameters(10, 24, 4);
+            setCadParams(10, 24, 4);
             break;
         case 0xB:
-            setCadParameters(10, 25, 4);
+            setCadParams(10, 25, 4);
             break;
     }
 
@@ -350,9 +386,9 @@ byte setModulationParams(byte sf, byte bw, byte cr){
 
 byte setPacketParams(byte packet_length){
     cmd[0] = 0x8C;
-    cmd[1] = 0x00; // preamble symbol length = cmd[1]<<8 + cmd[2]
-    cmd[2] = 0x0C; //
-    cmd[3] = 0x01; // implicit header
+    cmd[1] = 0x00; // preamble symbol length MSB
+    cmd[2] = 0x0C; // preamble symbol length LSB
+    cmd[3] = 0x00; // implicit header
     cmd[4] = packet_length; // packet length
 
     for (int i = 5; i < 10; i++){
@@ -438,7 +474,6 @@ byte getPacketType(){
     cmd[1] = 0x00;
     cmd[2] = 0x00;
     send_command(cmd, 3);
-    status = cmd[1];
     return cmd[2];
 }
 
@@ -446,6 +481,5 @@ unsigned short getIrqStatus(){
     cmd[0] = 0x12;  cmd[2] = 0;
     cmd[1] = 0;     cmd[3] = 0;
     send_command(cmd, 4);
-    status = cmd[1];
-    return (cmd[2] << 8 | cmd[3]);
+    return ((cmd[2] << 8) + cmd[3]);
 }

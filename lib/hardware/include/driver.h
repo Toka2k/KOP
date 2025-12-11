@@ -19,17 +19,17 @@ byte writeBuffer(byte* buf, byte buflen);
 byte readBuffer(byte* buf, byte buflen);
 byte writeRegister(byte* buf, byte buflen, unsigned short address);
 byte readRegister(byte* buf, byte buflen, unsigned short address);
-byte enableIrq();
+byte setDioIrqParams(unsigned short irq_mask, unsigned short dio1_mask);
 byte stopTimerOnPreamble();
 byte calibrateImage();
 byte calibrate();
 
-byte setCadParameters(byte cadDetMin, byte cadDetMax, byte cadSymNum);
+byte setCadParams(byte cadDetMin, byte cadDetMax, byte cadSymNum);
 byte setDio2AsRfSwitch();
 byte setPacketTypeLora();
 byte setBufferBaseAddress();
 byte setSleep();
-byte setStandby();
+byte setStandby(byte mode);
 byte setFs();
 byte setTx();
 byte setRx();
@@ -52,7 +52,6 @@ byte getRxPayloadLength();
 unsigned short getIrqStatus();
 
 extern byte cmd[260];
-extern byte status;
 
 #ifdef __cplusplus
 }
