@@ -30,26 +30,38 @@ unsigned short radio_transmit(packet* p){
     if ( (state = writeBuffer((byte*)p, p->h.length + HEADER_SIZE)) != SUCCESS) { return state; }
     if ( (state = setPacketParams(p->h.length + HEADER_SIZE)) != SUCCESS ) { return state; }
     setTx();
-    return getIrqStatus();
+    unsigned short irq_status = 0;
+    getIrqStatus(&irq_status);
+    return irq_status;
 }
 
 unsigned short radio_scanChannel(){
     clearIrqStatus(IRQ_CAD_DONE | IRQ_CAD_DETECTED);
     setCAD();
-    unsigned short state = 0;
-    while(state != IRQ_CAD_DONE){
-        getIrqStatus();
+    unsigned short irq_status = 0;
+    byte status = 0;
+    while(irq_status != IRQ_CAD_DONE && irq_status != IRQ_TIMEOUT){
+        getIrqStatus(&irq_status);
+        getStatus(&status);
+        Serial.print("STATUS: "); Serial.print(status, BIN); 
+        Serial.print(" IRQ STATUS: "); Serial.println(irq_status, BIN);
+        delay(10);
     }
-    return state;
+    return irq_status;
 }
 
 int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr){
     // pins:
     pinMode(LORA_RXEN,  OUTPUT);
-    pinMode(LORA_RST, INPUT_PULLUP);
+    pinMode(LORA_RST, OUTPUT);
     pinMode(LORA_NSS,   OUTPUT);
     pinMode(LORA_BUSY,  INPUT);
     pinMode(LORA_DIO1,  INPUT);
+
+    // Resetting E220 
+    digitalWrite(LORA_RST, LOW);
+    delay(50);
+    digitalWrite(LORA_RST, HIGH);
 
     SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
 
@@ -313,7 +325,7 @@ byte setPaConfig(){
 }
 
 byte setRxTxFallbackMode(byte mode){
-    if (mode != 0x20 || mode != 0x30 || mode != 0x40) { return INVALID_MODE; }
+    if (mode != 0x20 && mode != 0x30 && mode != 0x40) { return INVALID_MODE; }
 
     // 0x20 STDBY_RC    
     // 0x30 STDBY_XOSC     
@@ -333,11 +345,10 @@ byte setRfFrequency(float freq){
     return send_command(cmd, 5);
 }
 
-byte setTxParams(byte power, byte ramptime){
+byte setTxParams(signed char power, byte ramptime){
 
-    if (power < 0xF7 || power > 0x16) { return INVALID_POWER; }
+    if (power < -9 || power > 22) { return INVALID_POWER; }
     if (ramptime > 0x07) { return INVALID_RAMPTIME; }
-
 
     cmd[0] = 0x8E;
     cmd[1] = power; // power
@@ -419,11 +430,15 @@ byte getRxPayloadLength(){
     return cmd[2];
 }
 
-byte getStatus(){
+byte getStatus(byte* status){
     cmd[0] = 0xC0;
     cmd[1] = 0;
 
-    return send_command(cmd, 2);
+    byte state = send_command(cmd, 2);
+ 
+    *status = cmd[1];
+
+    return state;
 }
 
 byte getRSSI(){
@@ -477,9 +492,10 @@ byte getPacketType(){
     return cmd[2];
 }
 
-unsigned short getIrqStatus(){
+byte getIrqStatus(unsigned short* irq_status){
     cmd[0] = 0x12;  cmd[2] = 0;
     cmd[1] = 0;     cmd[3] = 0;
-    send_command(cmd, 4);
-    return ((cmd[2] << 8) + cmd[3]);
+    byte state = send_command(cmd, 4);
+    *irq_status = (cmd[2] << 8) + cmd[3];
+    return state;
 }

@@ -64,7 +64,7 @@ int DHCP_OFFER(byte* data){
     free(payload);
 
     int flags;
-    if (flags = get_hw_flags != SUCCESS){
+    if ((flags = get_hw_flags()) != SUCCESS){
         return flags;
     }
 
@@ -98,7 +98,7 @@ int DHCP_ACK(packet* p){
     enqueue(&to_send, p);
 
     int flags;
-    if (flags = get_hw_flags() != SUCCESS){
+    if ((flags = get_hw_flags()) != SUCCESS){
         return flags;
     }
 
@@ -129,7 +129,7 @@ int DHCP_FIN(packet* p){
     enqueue(&to_send, p);
 
     int flags;
-    if (flags = get_hw_flags() != SUCCESS){
+    if ((flags = get_hw_flags()) != SUCCESS){
         return flags;
     }
 
@@ -178,7 +178,7 @@ int DHCP_DENY(){
     DHCP_DROP();
 
     int flags;
-    if (flags = get_hw_flags() != SUCCESS){
+    if ((flags = get_hw_flags()) != SUCCESS){
         return flags;
     }
 

@@ -37,9 +37,9 @@
 #define NULL_POINTER -1; 
 
 // PROTOCOLS
-#define P_   (0x0)
-#define P_DB   (0x1)
-#define P_ARP    (0x2)
+#define P_NONE  (0x0)
+#define P_DB    (0x1)
+#define P_ARP   (0x2)
 #define P_DHCP  (0x3)
 
 // Hardware
@@ -47,6 +47,9 @@
 #define MAX_NEIGHBOURS (256)
 #define PAYLOAD_SIZE (256 - HEADER_SIZE)
 #define HEADER_SIZE (12)
+
+#define STDBY_XOSC (1)
+#define STDBY_RC (0)
 
 #define RESERVED_ADDRESSES 2 
 #define ADDRESS_BITS 14

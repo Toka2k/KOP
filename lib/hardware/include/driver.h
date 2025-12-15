@@ -38,18 +38,18 @@ byte setRxDutyCycle(int rxPeriod, int sleepPeriod);
 byte setPaConfig();
 byte setRxTxFallbackMode(byte mode);
 byte setRfFrequency(float freq);
-byte setTxParams(byte power, byte ramptime);
+byte setTxParams(signed char power, byte ramptime);
 byte setModulationParams(byte sf, byte bw, byte cr);
 byte setPacketParams(byte packet_length);
 
 byte getPacketType();
-byte getStatus();
+byte getStatus(byte* status);
 byte getRSSI();
 byte getSNR();
 byte getSignalRssi();
 byte getRssiInst();
 byte getRxPayloadLength();
-unsigned short getIrqStatus();
+byte getIrqStatus(unsigned short* irq_status);
 
 extern byte cmd[260];
 

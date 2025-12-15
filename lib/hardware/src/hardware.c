@@ -17,6 +17,13 @@ byte secret[2][SECRET_COUNT] = {{19},{11}};
 
 // created multiple hash functions because of the initiallization problems with
 // packet headers.
+
+int init_zero(void* ptr, int ptr_len, int type_size){
+    for(int i = 0; i < ptr_len * type_size; i++){
+        *(((byte*)ptr) + i) = 0;
+    }
+}
+
 unsigned short HASH_PH(packed_header ph){
     unsigned short hash = 0;
 
@@ -77,16 +84,20 @@ addr find_addr(addr address){
 }
 
 void sort_neighbours(){
-    int temp[neighbours_size] = {0};
+    int* temp = malloc(neighbours_size * sizeof(int));
     for (int i = 0; i < neighbours_size; i++){
         temp[i] = i;
     }
 
     qsort(temp, neighbours_size, sizeof(int), cmp_index);
 
-    byte _my_seqnums[neighbours_size] = {0};
-    byte _neighbour_seqnums[neighbours_size] = {0};
-    addr _neighbours[neighbours_size] = {0};
+    byte* _my_seqnums = malloc(neighbours_size * sizeof(byte));
+    byte* _neighbour_seqnums = malloc(neighbours_size * sizeof(byte));
+    addr* _neighbours = malloc(neighbours_size * sizeof(addr));
+
+    init_zero(_my_seqnums, neighbours_size, sizeof(byte));
+    init_zero(_neighbour_seqnums, neighbours_size, sizeof(byte));
+    init_zero(_neighbours, neighbours_size, sizeof(addr));
 
      for (int i = 0; i < neighbours_size; i++){
         _my_seqnums[i] = my_seqnums[temp[i]];

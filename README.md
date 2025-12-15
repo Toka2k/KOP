@@ -13,7 +13,6 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - DB 
     - DB download
     - updates
-- Channel scanning
 - Add function for faulty transmission handling
 
 ### Currently finished implementing:
@@ -39,3 +38,4 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
     - Allow custom settings
     - Transmit(), Receive IRQ callback, Channel scanning.
     - Error checking
+    - Channel scanning
