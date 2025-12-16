@@ -39,3 +39,4 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
     - Transmit(), Receive IRQ callback, Channel scanning.
     - Error checking
     - Channel scanning
+    - Event based handling irqs

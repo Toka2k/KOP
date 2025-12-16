@@ -9,7 +9,6 @@ static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
 addr neighbours[MAX_NEIGHBOURS] = {0};
 byte neighbours_size = 0;
 
-SemaphoreHandle_t radio_mutex;
 
 // First set of magic numbers, is for hosts
 // Second set of magic numbers, is for routers

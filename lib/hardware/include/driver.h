@@ -7,11 +7,13 @@
 extern "C" {
 #endif
 
+void radio_loop(void* pvParameters);
 int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr);
 void radio_cleanup(unsigned short clearIrqParam);
 unsigned short radio_scanChannel();
 unsigned short radio_transmit(packet* p);
 
+void ARDUINO_ISR_ATTR dio1_isr();
 byte send_command(byte* cmd, byte cmdLen);
 byte available();
 byte clearIrqStatus(unsigned short clearIrqParam);
@@ -43,7 +45,7 @@ byte setModulationParams(byte sf, byte bw, byte cr);
 byte setPacketParams(byte packet_length);
 
 byte getPacketType();
-byte getStatus(byte* status);
+byte getStatus();
 byte getRSSI();
 byte getSNR();
 byte getSignalRssi();
@@ -52,7 +54,8 @@ byte getRxPayloadLength();
 byte getIrqStatus(unsigned short* irq_status);
 
 extern byte cmd[260];
-
+extern SemaphoreHandle_t irqSemaphore;
+extern SemaphoreHandle_t radio_mutex;
 #ifdef __cplusplus
 }
 #endif

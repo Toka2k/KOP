@@ -7,12 +7,37 @@
 //
 
 SPISettings settings = SPISettings(4000000, MSBFIRST, SPI_MODE0);
-byte cmd[260] = {0}; 
+byte cmd[260] = {0};
+SemaphoreHandle_t irqSemaphore;
+SemaphoreHandle_t radio_mutex;
+
+void radio_loop(void* pvParameters){
+    unsigned short irq_status = 0;
+    void (*callback)() = (void (*)())pvParameters;
+
+    radio_mutex = xSemaphoreCreateMutex();
+    irqSemaphore = xSemaphoreCreateMutex();
+
+    for(;;){
+        if (xSemaphoreTake(irqSemaphore, portMAX_DELAY) == pdTRUE){
+            while(xSemaphoreTake(radio_mutex, portMAX_DELAY) == 0){vTaskDelay(pdMS_TO_TICKS(1));}
+            getIrqStatus(&irq_status);
+            clearIrqStatus(irq_status);
+
+            if (irq_status & IRQ_RX_DONE){
+                callback();
+            }
+
+            xSemaphoreGive(radio_mutex);
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+}
 
 void radio_cleanup(unsigned short clearIrqParam){
-    setStandby(1);
+    setStandby(STDBY_RC);
     clearIrqStatus(clearIrqParam);
-    setBufferBaseAddress();
     setRxDutyCycle(0xC0, 0xC0);
 
     return;
@@ -42,7 +67,7 @@ unsigned short radio_scanChannel(){
     byte status = 0;
     while(irq_status != IRQ_CAD_DONE && irq_status != IRQ_TIMEOUT){
         getIrqStatus(&irq_status);
-        getStatus(&status);
+        status = getStatus();
         Serial.print("STATUS: "); Serial.print(status, BIN); 
         Serial.print(" IRQ STATUS: "); Serial.println(irq_status, BIN);
         delay(10);
@@ -53,7 +78,7 @@ unsigned short radio_scanChannel(){
 int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr){
     // pins:
     pinMode(LORA_RXEN,  OUTPUT);
-    pinMode(LORA_RST, OUTPUT);
+    pinMode(LORA_RST,   OUTPUT);
     pinMode(LORA_NSS,   OUTPUT);
     pinMode(LORA_BUSY,  INPUT);
     pinMode(LORA_DIO1,  INPUT);
@@ -62,20 +87,21 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
     digitalWrite(LORA_RST, LOW);
     delay(50);
     digitalWrite(LORA_RST, HIGH);
-
+    
     SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
 
     int state = 0; 
-    if ( (state = setStandby(STDBY_RC)) != SUCCESS ) { return state; } 
-    if ( (state = setPacketTypeLora()) != SUCCESS ) { return state; } 
-    if ( (state = setModulationParams(sf, bw, cr)) != SUCCESS ) { return state; } 
-    if ( (state = setPacketParams(STDBY_RC)) != SUCCESS ) { return state; } 
-    if ( (state = setRfFrequency(freq)) != SUCCESS ) { return state; } 
-    if ( (state = setPaConfig()) != SUCCESS ) { return state; }
-    if ( (state = setTxParams(power, ramptime)) != SUCCESS ) { return state; } 
-    if ( (state = setBufferBaseAddress()) != SUCCESS ) { return state; } 
-    if ( (state = setDioIrqParams(0x3f7, 0x1)) != SUCCESS ) { return state; } 
-    if ( (state = setDio2AsRfSwitch()) != SUCCESS ) { return state; }
+    if ( (state = setStandby(STDBY_RC)) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setPacketTypeLora()) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setRfFrequency(freq)) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setModulationParams(sf, bw, cr)) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setPacketParams(0xFF)) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setPaConfig()) & 0x0e != 0x04 ) { return state; }
+    if ( (state = setTxParams(power, ramptime)) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setBufferBaseAddress()) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = clearIrqStatus(0xffff)) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setDioIrqParams(0xffff, 0x380)) & 0x0e != 0x04 ) { return state; } 
+    if ( (state = setDio2AsRfSwitch()) & 0x0e != 0x04 ) { return state; }
 
     return SUCCESS;
 }
@@ -83,6 +109,16 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
 //
 // BAREBONE FUNCTIONS
 //
+
+void ARDUINO_ISR_ATTR dio1_isr(){
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    xSemaphoreGiveFromISR(irqSemaphore, &xHigherPriorityTaskWoken);
+
+    if (xHigherPriorityTaskWoken) {
+        portYIELD_FROM_ISR();
+    }
+}
 
 byte available(){
     if (digitalRead(LORA_BUSY) == 0){
@@ -97,10 +133,15 @@ byte send_command(byte* cmd, byte cmdLen){
     SPI.beginTransaction(settings);
     digitalWrite(LORA_NSS, LOW);
     SPI.transfer(cmd, cmdLen);
+
+    // GET STATUS AND RETURN IT
+    byte status[2] = {0xC0, 0};
+    SPI.transfer(status, 2);
+
     digitalWrite(LORA_NSS, HIGH);
     SPI.endTransaction();
 
-    return SUCCESS;
+    return status[1];
 }
 
 byte clearIrqStatus(unsigned short clearIrqParam){
@@ -430,13 +471,11 @@ byte getRxPayloadLength(){
     return cmd[2];
 }
 
-byte getStatus(byte* status){
+byte getStatus(){
     cmd[0] = 0xC0;
     cmd[1] = 0;
 
     byte state = send_command(cmd, 2);
- 
-    *status = cmd[1];
 
     return state;
 }

@@ -6,26 +6,6 @@
 #include <protocols.h>
 
 void my_loop(void* pvParameters);
-unsigned short irq_status = 0;
-
-void radio_loop(void* pvParameters){
-    void (*callback)() = (void (*)())pvParameters;
-
-    for(;;){
-        if (digitalRead(LORA_DIO1)){
-            while(xSemaphoreTake(radio_mutex, portMAX_DELAY) == 0){vTaskDelay(pdMS_TO_TICKS(1));}
-            getIrqStatus(&irq_status);
-
-            if (irq_status & IRQ_RX_DONE){
-                callback();
-            }
-
-            xSemaphoreGive(radio_mutex);
-        }
-        
-        vTaskDelay(pdMS_TO_TICKS(1));
-    }
-}
 
 void func_check(int state, const char* name){
     if(state == SUCCESS){
@@ -116,7 +96,7 @@ int driver_test(){
     // getters test:
     byte status = 0;
     Serial.print("Payload Length: "); Serial.println(getRxPayloadLength());
-    Serial.print("Status: "); getStatus(&status); Serial.println(status, BIN);
+    Serial.print("Status: "); status = getStatus(); Serial.println(status, BIN);
     Serial.print("RSSI: "); Serial.println(getRSSI()/-2);
     Serial.print("SNR: "); Serial.println(getSNR()/-2);
     Serial.print("SIGNAL RSSI: "); Serial.println(getSignalRssi()/-2);
@@ -131,31 +111,22 @@ int driver_test(){
 
 void setup() {
     __my_address.address = 1;
-    radio_mutex = xSemaphoreCreateMutex();
+
+    attachInterrupt(LORA_DIO1, dio1_isr, RISING);
 
     Serial.begin(115200);
-    digitalWrite(LORA_RST, LOW);
-    delay(100);
-    digitalWrite(LORA_RST, HIGH);
-    delay(1000);
-
-    pinMode(2, OUTPUT);
-    digitalWrite(2, LOW);
-    
     Serial.println("Starting init...");
-    Serial.print("My address: "); Serial.println(__my_address.address);
 
-    radio_init(434000000.0, 0x16, 0x4, 0x7, 0x4, 0x1);
+    radio_init(433000000.0, 0x16, 0x4, 0x7, 0x4, 0x1);
 
-
-    driver_test();
-    // TEST TX:
-    /*byte data = 1;
-    writeBuffer(&data, 1);
-    setPacketParams(1);
-    setTx();
-    Serial.println(getIrqStatus());*/
-    // END OF TEST
+    setCAD();
+    for(;;){
+        if(xSemaphoreTake(irqSemaphore, portMAX_DELAY)){
+            getIrqStatus(&irq_status);
+            Serial.println(irq_status, HEX);
+            clearIrqStatus(irq_status);
+        }
+    }
 
     //xTaskCreatePinnedToCore(my_loop, "Ping pong task", 8192, NULL, 1, NULL, 0);
     //xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 3, NULL, 1);
@@ -202,7 +173,7 @@ void my_loop(void* pvParamaters){
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
-int counter = 0;
+
 void loop() {
     vTaskDelay(portMAX_DELAY);
 }
