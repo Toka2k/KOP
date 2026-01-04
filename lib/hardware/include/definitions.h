@@ -48,8 +48,10 @@
 #define PAYLOAD_SIZE (256 - HEADER_SIZE)
 #define HEADER_SIZE (12)
 
-#define STDBY_XOSC (1)
+#define LDO (0)
+#define DC_TO_DC (1)
 #define STDBY_RC (0)
+#define STDBY_XOSC (1)
 
 #define RESERVED_ADDRESSES 2 
 #define ADDRESS_BITS 14
@@ -125,5 +127,19 @@ typedef struct __attribute__((packed)){
     byte count;
     byte index;
 } buf_head;
+
+typedef struct __attribute__((packed)){
+    byte cmd_status : 3;
+    byte chip_mode : 3;
+} status;
+
+typedef struct __attribute__((packed)){
+    float freq;
+    byte sf;
+    byte bw;
+    byte cr;
+    byte pl;
+} LLCC68_SETTINGS;
+
 
 #endif

@@ -116,87 +116,81 @@ void sort_neighbours(){
 //      CORE 2
 //
 
-void Receive(void){
-    hw_flags = 0;
-    byte packet_length = getRxPayloadLength();
-    if(packet_length == 1){
-        readBuffer(&packet_length, 1);
-        setPacketParams(packet_length);
-        radio_cleanup(IRQ_RX_DONE);
-    } else {
-        setPacketParams(1);
-    }
+void Receive(void* pvParameters){
+    unsigned short irq_status = 0;
+    for(;;){
+        xSemaphoreTake(rxDoneSemaphore, portMAX_DELAY);
+        xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
+        xSemaphoreTake(radio_mutex, portMAX_DELAY);
 
-    packed_header ph = {0};
-    // if we successfuly read data we continue
-    int state = readBuffer((byte*)&ph, sizeof(packed_header));
-    if (state != SUCCESS){
-        hw_flags |= ERROR;
-        radio_cleanup(IRQ_RX_DONE);
-        return;
-    }
-
-    unpacked_header uh = UNPACK_HEADER(ph);
-
-    //compare hmac
-    if (*(unsigned short*)ph.hmac != HASH_PH(ph)){
-        hw_flags |= INVALID_HASH; 
-        radio_cleanup(IRQ_RX_DONE);
-        return;
-    }
-
-    addr neighbour = {0};
-    neighbour.address = uh.mac_s;
-    addr result = find_addr(neighbour);
-    addr zero = {0};
-
-    // if its not our neighbour, we add them to neighbours
-    if (_memcmp(&result, &zero, sizeof(addr)) == 0){
-        neighbours[neighbours_size % MAX_NEIGHBOURS] = neighbour;
-
-        if (neighbours_size < MAX_NEIGHBOURS){
-            sort_neighbours();
-            neighbours_size += 1;
+        hw_flags = 0;
+        byte packet_length = getRxPayloadLength();
+        if(packet_length == 1){
+            readBuffer(&packet_length, 1);
+            setPacketParams(packet_length);
+        } else {
+            setPacketParams(1);
         }
-        add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
-    }
 
-    // if its not for me or local broadcast, we drop the packet
-    if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
-        radio_cleanup(IRQ_RX_DONE);
-        return;
-    }
+        packed_header ph = {0};
+        readBuffer((byte*)&ph, sizeof(packed_header));
+
+        unpacked_header uh = UNPACK_HEADER(ph);
+
+        //compare hmac
+        if (*(unsigned short*)ph.hmac != HASH_PH(ph)){
+            hw_flags |= INVALID_HASH; 
+            continue;
+        }
+
+        addr neighbour = {0};
+        neighbour.address = uh.mac_s;
+        addr result = find_addr(neighbour);
+        addr zero = {0};
+
+        // if its not our neighbour, we add them to neighbours
+        if (_memcmp(&result, &zero, sizeof(addr)) == 0){
+            neighbours[neighbours_size % MAX_NEIGHBOURS] = neighbour;
+
+            if (neighbours_size < MAX_NEIGHBOURS){
+                sort_neighbours();
+                neighbours_size += 1;
+            }
+            add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
+        }
+
+        // if its not for me or local broadcast, we drop the packet
+        if (uh.mac_d != 0x3fff || uh.mac_d != __my_address.address){
+            continue;
+        }
+        
+        //compare seqnum
+        int i = 0;
+        for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
+        if (i == neighbours_size){
+            hw_flags |= NOT_NEIGHBOUR;
+            continue; 
+        }
+
+        // We track seqnums of neighbours
+        if (neighbour_seqnums[i] == ph.seqnum){
+            neighbour_seqnums[i]++;
+        } else {
+            hw_flags |= INVALID_SEQNUM;
+            continue;
+        }
+
+        byte data[ph.length];
+        readBuffer(data, ph.length);
     
-    //compare seqnum
-    int i = 0;
-    for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
-    if (i == neighbours_size){
-        hw_flags |= NOT_NEIGHBOUR;
-        radio_cleanup(IRQ_RX_DONE);
-        return; 
+        packet p = packet_init(ph, data);
+    
+        enqueue(&received, &p);
     }
-
-    // We track seqnums of neighbours
-    if (neighbour_seqnums[i] == ph.seqnum){
-        neighbour_seqnums[i]++;
-    } else {
-        hw_flags |= INVALID_SEQNUM;
-        radio_cleanup(IRQ_RX_DONE);
-        return;
-    }
-
-    byte data[ph.length];
-    state = readBuffer(data, ph.length);
- 
-    packet p = packet_init(ph, data);
- 
-    enqueue(&received, &p);
-
-    radio_cleanup(IRQ_RX_DONE);
-    return;
 }
 
 void Transmit(void* pvParameters){
+    unsigned short irq_status = 0;
     for (;;){
         hw_flags = 0;
 
@@ -206,7 +200,7 @@ void Transmit(void* pvParameters){
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        while(xSemaphoreTake(radio_mutex, portMAX_DELAY) == 0){vTaskDelay(pdMS_TO_TICKS(1));}
+        xSemaphoreTake(radio_mutex, portMAX_DELAY);
 
         packet p = *to_send.buf[to_send.index];
 
@@ -215,7 +209,6 @@ void Transmit(void* pvParameters){
         for (; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
         if (i == MAX_NEIGHBOURS){
             hw_flags |= NOT_NEIGHBOUR;
-            radio_cleanup(0xff);
             dequeue(&to_send);
             xSemaphoreGive(radio_mutex);
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -231,14 +224,13 @@ void Transmit(void* pvParameters){
         p.h.hmac[1] = hmac & 0xff;
 
         //scaning
-        while (radio_scanChannel() != IRQ_CAD_DETECTED){
-            delay(random() % 11);
+        while (radio_scanChannel() & IRQ_CAD_DETECTED){
+            vTaskDelay(pdMS_TO_TICKS(random() % 11));
         }
 
-        unsigned short state = radio_transmit(&p);
-        if (state != IRQ_TX_DONE){
+        irq_status = radio_transmit(&p);
+        if (irq_status & IRQ_TIMEOUT){
             hw_flags |= ERROR;
-            radio_cleanup(0xff);
             dequeue(&to_send);
             xSemaphoreGive(radio_mutex);
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -246,7 +238,6 @@ void Transmit(void* pvParameters){
         }
 
         dequeue(&to_send);
-        radio_cleanup(IRQ_TX_DONE);
         xSemaphoreGive(radio_mutex);
         vTaskDelay(pdMS_TO_TICKS(10));
     }
@@ -301,7 +292,7 @@ unpacked_header UNPACK_HEADER(packed_header ph){
 }
 
 void process_packet(void* pvParameters){
-     for (;;){
+    for (;;){
         hw_flags = 0;
 
         //read packet from queue

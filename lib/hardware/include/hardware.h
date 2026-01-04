@@ -22,7 +22,7 @@ extern SemaphoreHandle_t radio_mutex;
 
 int get_hw_flags();
 addr find_addr(addr address);
-void Receive(void);
+void Receive(void* pvParameters);
 void Transmit(void* pvParameters);
 packet packet_init(packed_header ph, byte* payload);
 packed_header PACK_HEADER(unpacked_header uh);
