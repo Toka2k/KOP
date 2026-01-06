@@ -9,6 +9,7 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 ### Currently working on:
 - Testing E220-400M33S driver and communication between two modules.
     - add IRQ_TIMEOUT handler 
+    - how does radio_scanChannel return 0
 
 ### To do:
 - DB 

@@ -18,14 +18,6 @@ QueueHandle_t irq_status_queue;
 LLCC68_SETTINGS current_settings;
 
 void radio_loop(void* pvParameters){
-    irqSemaphore = xSemaphoreCreateBinary();
-    txDoneSemaphore = xSemaphoreCreateBinary();
-    rxDoneSemaphore = xSemaphoreCreateBinary();
-    cadDoneSemaphore = xSemaphoreCreateBinary();
-
-    radio_mutex = xSemaphoreCreateMutex();
-    
-    irq_status_queue = xQueueCreate(4, sizeof(unsigned short));
 
     unsigned short irq_status = 0;
     void (*callback)() = (void (*)())pvParameters;
@@ -50,6 +42,9 @@ void radio_loop(void* pvParameters){
         if (irq_status & IRQ_CAD_DONE){
             xSemaphoreGive(cadDoneSemaphore);
         }
+        if (irq_status & IRQ_TIMEOUT){
+            Serial.println("TIMEOUT");
+        }
 
         xSemaphoreGive(radio_mutex);
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -68,14 +63,14 @@ unsigned short radio_transmit(packet* p){
 
     writeBuffer(&p->h.length + HEADER_SIZE, 1);
     setPacketParams(1);
-    setTx(calculate_timeout(current_settings.sf, current_settings.bw, current_settings.pl, current_settings.cr));
+    setTx(calculate_timeout(current_settings.sf, current_settings.bw, current_settings.pl, current_settings.cr), 1);
 
     xSemaphoreTake(txDoneSemaphore, portMAX_DELAY);
     xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
 
     writeBuffer((byte*)p, p->h.length + HEADER_SIZE);
     setPacketParams(p->h.length + HEADER_SIZE);
-    setTx(calculate_timeout(current_settings.sf, current_settings.bw, current_settings.pl, current_settings.cr));
+    setTx(calculate_timeout(current_settings.sf, current_settings.bw, current_settings.pl, current_settings.cr), p->h.length + HEADER_SIZE);
     
     xSemaphoreTake(txDoneSemaphore, portMAX_DELAY);
     xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
@@ -84,8 +79,6 @@ unsigned short radio_transmit(packet* p){
 
 unsigned short radio_scanChannel(){
     unsigned short irq_status = 0;
-
-    clearIrqStatus(IRQ_CAD_DONE | IRQ_CAD_DETECTED);
     setCAD();
 
     xSemaphoreTake(cadDoneSemaphore, portMAX_DELAY);
@@ -99,9 +92,29 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
     current_settings.cr = cr;
     current_settings.pl = 1;
     current_settings.freq = freq;
+    
+    irqSemaphore = xSemaphoreCreateBinary();
+    txDoneSemaphore = xSemaphoreCreateBinary();
+    rxDoneSemaphore = xSemaphoreCreateBinary();
+    cadDoneSemaphore = xSemaphoreCreateBinary();
+
+    xSemaphoreGive(irqSemaphore);
+    xSemaphoreGive(txDoneSemaphore);
+    xSemaphoreGive(rxDoneSemaphore);
+    xSemaphoreGive(cadDoneSemaphore);
+    
+    xSemaphoreTake(irqSemaphore, portMAX_DELAY);
+    xSemaphoreTake(txDoneSemaphore, portMAX_DELAY);
+    xSemaphoreTake(rxDoneSemaphore, portMAX_DELAY);
+    xSemaphoreTake(cadDoneSemaphore, portMAX_DELAY);
+
+    radio_mutex = xSemaphoreCreateMutex();
+
+    irq_status_queue = xQueueCreate(4, sizeof(unsigned short));
 
     // pins:
-    pinMode(LORA_RXEN,   OUTPUT);
+    pinMode(LORA_RXEN,  OUTPUT);
+    pinMode(LORA_TXEN,  OUTPUT);
     pinMode(LORA_RST,   OUTPUT);
     pinMode(LORA_NSS,   OUTPUT);
     pinMode(LORA_BUSY,  INPUT);
@@ -125,28 +138,26 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
     SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
     byte sync_word[2] = {0x24, 0x24};
 
+    xSemaphoreTake(radio_mutex, portMAX_DELAY);
 
     setStandby(STDBY_RC);
-    setRegulatorMode(DC_TO_DC);
-    setPacketTypeLora();
-    setDio2AsRfSwitch();
+
+    digitalWrite(LORA_RXEN, LOW);
+    digitalWrite(LORA_TXEN, LOW);
     calibrate();
     setRfFrequency(freq);
-    calibrateImage();
+    
+    setPacketTypeLora();
 
     setBufferBaseAddress();
     setModulationParams(sf, bw, cr);
-    setPacketParams(1);
-    setLoRaSymbNumTimeout(2);
-
-    setPaConfig();
-    setTxParams(power, ramptime);
-
-    setRxTxFallbackMode(0x20);
+    
     clearIrqStatus(0xFFFF);
 
     setDioIrqParams(irq_map, IRQ_TX_DONE | IRQ_RX_DONE | IRQ_CAD_DONE | IRQ_TIMEOUT);
     writeRegister(sync_word, 2, 0x740);
+
+    xSemaphoreGive(radio_mutex);
 
     Serial.println("Succesful radio initialization.");
 
@@ -158,31 +169,28 @@ int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr)
 //
 
 int calculate_timeout(byte sf, byte bw, byte pl, byte cr){
-    int bandwidth;
+    short bandwidth = 0;
     switch(bw){
         case 0x4:
-            bandwidth = 125000;
+            bandwidth = 125;
             break;
         case 0x5:
-            bandwidth = 250000;
+            bandwidth = 250;
             break;
         case 0x6:
-            bandwidth = 500000;
+            bandwidth = 500;
             break;
     }
 
-    float symbol_duration = (1 << sf) / bandwidth;
+    float symbol_duration = pow(2, sf) / bandwidth;
+    float payload_symbols = max(((8 * pl) - (4 * sf) + 8), 0) / (4 * sf);
 
-    float payload_symbols = ((8 * pl) - (4 * sf) + 8) / (4 * sf);
-    if (payload_symbols < 0){ payload_symbols = 0; }
-    else { payload_symbols += 0.5;}
-
-    payload_symbols = round(payload_symbols) * (4 + cr); // 4 + 1 = cr
+    payload_symbols = ceil(payload_symbols) * (4 + cr); // 4 + 1 = cr
     payload_symbols += 8 + 4.25 + 12; // 12 is preamble length
 
     float timeout_ms = (payload_symbols * symbol_duration) * 1.5;
-    int timeout = (timeout_ms * 1000) / 15.625;
-
+    int timeout = (timeout_ms * 1000.0) / 15.625;
+    
     return timeout;
 }
 
@@ -315,6 +323,9 @@ void setSleep(){
 }
 
 void setStandby(byte mode){
+    digitalWrite(LORA_RXEN, LOW);
+    digitalWrite(LORA_TXEN, LOW);
+
     byte cmd[] = {0x80, mode};
 
     send_command(cmd, 2);
@@ -328,14 +339,31 @@ void setFs(){
     return;
 }
 
-void setTx(){
-    byte cmd[] = {0x83, 0x00, 0x64, 0x00};
+void setTx(int timeout, byte pl){
+    setStandby(STDBY_RC);
+
+    digitalWrite(LORA_RXEN, LOW);
+    digitalWrite(LORA_TXEN, HIGH);
+
+    setPacketParams(pl);
+    setPaConfig();
+    setTxParams(0x16, 0x4);
+
+    byte cmd[] = {0x83, (byte)((timeout & 0xFF0000) >> 16), (byte)((timeout & 0xFF00) >> 8), (byte)(timeout & 0xFF)};
 
     send_command(cmd, 4);
     return;
 }
 
-void setRx(int timeout){
+void setRx(int timeout, byte pl){
+    setStandby(STDBY_RC);
+    
+    digitalWrite(LORA_RXEN, HIGH);
+    digitalWrite(LORA_TXEN, LOW);
+    
+    setPacketParams(pl);
+    setLoRaSymbNumTimeout(12);
+
     byte cmd[] = {0x82, (byte)((timeout & 0xFF0000) >> 16), (byte)((timeout & 0xFF00) >> 8), (byte)(timeout & 0xFF)};
 
     send_command(cmd, 4);
@@ -343,6 +371,12 @@ void setRx(int timeout){
 }
 
 void setCAD(){
+    setStandby(STDBY_RC);
+    setLoRaSymbNumTimeout(0);
+
+    digitalWrite(LORA_RXEN, HIGH);
+    digitalWrite(LORA_TXEN, LOW);
+
     byte cmd[] = {0xC5};
 
     send_command(cmd, 1);
@@ -401,16 +435,21 @@ void setDioIrqParams(unsigned short irq_mask, unsigned short dio1_mask){
     return;
 }
 
-void setCadParams(byte cadDetMin, byte cadDetMax, byte cadSymNum){
+void setCadParams(byte cadSymNum, byte cadDetMax, byte cadDetMin){
     byte cmd[] = {0x88,
     cadSymNum, // cad symbol lendth search
-    cadDetMin,
     cadDetMax,
+    cadDetMin,
     0x00, // 0x00=STDBY_RC 0x01=RX
     0x00, // timeout[0] MSB
-    0x02, // timeout[1] step = 15,625us
-    0x80, // timeout[2] LSB
+    0x00, // timeout[1] step = 15,625us
+    0x00, // timeout[2] LSB
     };
+
+    int timeout = calculate_timeout(current_settings.sf, current_settings.bw, current_settings.pl, current_settings.cr);
+    cmd[5] = (timeout & 0xFF0000) >> 16;
+    cmd[6] = (timeout & 0xFF00) >> 8;
+    cmd[7] = timeout & 0xFF;
     
     send_command(cmd, 8);
     return;
@@ -467,6 +506,8 @@ void setRfFrequency(float freq){
     cmd[4] = steps;
 
     send_command(cmd, 5);
+
+    calibrateImage();
     return;
 }
 
@@ -494,37 +535,38 @@ void setModulationParams(byte sf, byte bw, byte cr){
         case 0x6:
         case 0x7: 
         case 0x8:
-            setCadParams(10, 22, 2);
+            setCadParams(4, 22, 10);
             break;
         case 0x9:
-            setCadParams(10, 23, 4);
+            setCadParams(4, 23, 10);
             break;
         case 0xA:
-            setCadParams(10, 24, 4);
+            setCadParams(4, 24, 10);
             break;
         case 0xB:
-            setCadParams(10, 25, 4);
+            setCadParams(4, 25, 10);
             break;
     }
 
-    byte cmd[9] = {0x8B, sf, bw, cr, 0x00};
+    byte cmd[] = {0x8B, sf, bw, cr, 0x00};
 
-    if (((1 << sf) / bw) >= 16) { cmd [4] = 0x1; }
+    int bandwidth = bw == 4 ? 125 : bw == 5 ? 250 : bw == 6 ? 500 : 0;
+    if (((1 << sf) / bandwidth) >= 16) { cmd [4] = 0x1; }
 
-    send_command(cmd, 9);
+    send_command(cmd, 5);
     return;
 }
 
 void setPacketParams(byte packet_length){
     current_settings.pl = packet_length;
 
-    byte cmd[10] = {0x8C, 0x00, 0x0C, 0x00, packet_length, 0x00};
+    byte cmd[7] = {0x8C, 0x00, 0x0C, 0x00, packet_length, 0x00, 0x00};
     //cmd[1] = preamble symbol length MSB
     //cmd[2] = preamble symbol length LSB
     //cmd[3] = implicit header
     //cmd[4] = packet length
 
-    send_command(cmd, 10);
+    send_command(cmd, 7);
     return;
 }
 

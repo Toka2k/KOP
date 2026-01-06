@@ -31,8 +31,8 @@ void calibrate();
 void setSleep();
 void setStandby(byte mode);
 void setFs();
-void setTx(int timeout);
-void setRx(int timeout);
+void setTx(int timeout, byte pl);
+void setRx(int timeout, byte pl);
 void setCAD();
 void setRxDutyCycle(int rxPeriod, int sleepPeriod);
 
