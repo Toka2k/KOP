@@ -1,7 +1,7 @@
 #ifndef ___ARP___
 #define ___ARP___
 
-#include <hardware.h>
+#include <packet_handling.h>
 
 #ifdef __cplusplus
 extern "C" {

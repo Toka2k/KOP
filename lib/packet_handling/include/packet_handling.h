@@ -1,11 +1,11 @@
-#ifndef ___HARDWARE___
-#define ___HARDWARE___
+#ifndef ___PACKET_HANDLING___
+#define ___PACKET_HANDLING___
 
 #include <Arduino.h>
 #include <definitions.h>
 
 #include <address_table.h>
-#include <driver.h>
+#include <driver-al.h>
 
 #define SECRET_COUNT 1
 
@@ -24,12 +24,12 @@ int get_hw_flags();
 addr find_addr(addr address);
 void Receive(void* pvParameters);
 void Transmit(void* pvParameters);
+void process_packet(void* pvParameters);
 packet packet_init(packed_header ph, byte* payload);
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);
 unsigned short HASH_PH(packed_header ph);
 unsigned short HASH_UH(unpacked_header uh);
-void process_packet(void* pvParameters);
 int route(addr dest, byte length, byte protocol_id, byte* data);
 
 #ifdef __cplusplus

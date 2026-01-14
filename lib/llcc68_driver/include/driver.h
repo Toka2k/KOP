@@ -7,15 +7,12 @@
 extern "C" {
 #endif
 
-void radio_loop(void* pvParameters);
-void radio_cleanup(unsigned short clearIrqParam);
-unsigned short radio_transmit(packet* p);
-unsigned short radio_scanChannel();
-int radio_init(float freq, byte power, byte ramptime, byte sf, byte bw, byte cr);
+extern LLCC68_SETTINGS current_settings;
 
 // Basic functions for chip communictaion
+void radio_reset();
+void radio_setup();
 int calculate_timeout(byte sf, byte bw, byte pl, byte cr);
-void ARDUINO_ISR_ATTR dio1_isr();
 status decode_status();
 void send_command(byte* cmd, unsigned short cmdLen);
 void clearDeviceErrors();
@@ -46,7 +43,7 @@ void setBufferBaseAddress();
 void setDio2AsRfSwitch();
 void setPaConfig();
 void setRxTxFallbackMode(byte mode);
-void setRfFrequency(float freq);
+void setRfFrequency(double freq);
 void setTxParams(byte power, byte ramptime);
 void setModulationParams(byte sf, byte bw, byte cr);
 void setPacketParams(byte packet_length);
@@ -61,14 +58,6 @@ byte getSignalRSSI();
 byte getRssiInst();
 byte getPacketType();
 unsigned short getIrqStatus();
-
-extern SemaphoreHandle_t irqSemaphore;
-extern SemaphoreHandle_t txDoneSemaphore;
-extern SemaphoreHandle_t rxDoneSemaphore;
-extern SemaphoreHandle_t cadDoneSemaphore;
-extern SemaphoreHandle_t radio_mutex;
-
-extern QueueHandle_t irq_status_queue;
 
 #ifdef __cplusplus
 }

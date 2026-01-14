@@ -1,4 +1,4 @@
-#include <hardware.h>
+#include <packet_handling.h>
 #include <packet_buffering.h>
 
 static int hw_flags = 0;
@@ -243,6 +243,44 @@ void Transmit(void* pvParameters){
     }
 }
 
+void process_packet(void* pvParameters){
+    for (;;){
+        hw_flags = 0;
+
+        //read packet from queue
+        if (to_send.count == 0){
+            hw_flags |= EMPTY_BUF;
+            continue;
+        }
+        packet p = *received.buf[received.index];
+
+        unpacked_header received_uh = UNPACK_HEADER(p.h);
+        addr net_d = {received_uh.net_d};
+
+        unit node = find_unit(net_d);
+        if ((check(node)) != SUCCESS){
+            hw_flags |= INVALID_ADDRESS;
+            continue;
+        }
+
+        unpacked_header send_uh = received_uh;
+        send_uh.mac_s = __my_address.address;
+        if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
+            send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
+        } else {
+            // Proccessing packets
+            protocols[p.h.protocol_id](&p);
+            continue;
+        }
+        
+        packed_header send_ph = PACK_HEADER(send_uh);
+        p = packet_init(p.h, p.data);
+
+        enqueue(&to_send, &p);
+        hw_flags &= SUCCESS;
+    }
+}
+
 //
 //      End of CORE 2
 //
@@ -289,44 +327,6 @@ unpacked_header UNPACK_HEADER(packed_header ph){
     uh.hmac[1] = ph.hmac[1];
 
     return uh;
-}
-
-void process_packet(void* pvParameters){
-    for (;;){
-        hw_flags = 0;
-
-        //read packet from queue
-        if (to_send.count == 0){
-            hw_flags |= EMPTY_BUF;
-            continue;
-        }
-        packet p = *received.buf[received.index];
-
-        unpacked_header received_uh = UNPACK_HEADER(p.h);
-        addr net_d = {received_uh.net_d};
-
-        unit node = find_unit(net_d);
-        if ((check(node)) != SUCCESS){
-            hw_flags |= INVALID_ADDRESS;
-            continue;
-        }
-
-        unpacked_header send_uh = received_uh;
-        send_uh.mac_s = __my_address.address;
-        if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
-            send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
-        } else {
-            // Proccessing packets
-            protocols[p.h.protocol_id](&p);
-            continue;
-        }
-        
-        packed_header send_ph = PACK_HEADER(send_uh);
-        p = packet_init(p.h, p.data);
-
-        enqueue(&to_send, &p);
-        hw_flags &= SUCCESS;
-    }
 }
 
 int route(addr dest, byte length, byte protocol_id, byte* data){

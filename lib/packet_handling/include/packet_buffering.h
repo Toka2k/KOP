@@ -1,7 +1,6 @@
 #ifndef ___PACKET_BUFFERING___
 #define ___PACKET_BUFFERING___
 
-#include <hardware.h>
 #include <definitions.h>
 
 #ifdef __cplusplus

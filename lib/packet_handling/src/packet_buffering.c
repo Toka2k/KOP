@@ -1,4 +1,4 @@
-#include <hardware.h>
+#include <packet_handling.h>
 #include <packet_buffering.h>
 
 static packet received_buf[MAX_STORED_PACKETS] = {0};
