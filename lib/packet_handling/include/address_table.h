@@ -13,6 +13,7 @@ extern "C"{
 extern unit null;
 extern flags FLAGS;
 extern size __table_size;
+extern unit __table[MAX_TABLE_SIZE];
 extern addr __highest_address;
 extern addr __my_address;
 extern int routers[1 << (ADDRESS_BITS - 5)];

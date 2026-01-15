@@ -1,5 +1,5 @@
-# Lora WWAN
-I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
+# Lora LPWAN
+I’m working on creating a LoRa-based LPWAN (Low Power Wide Area Network).
 
 ### Hardware in use
 - esp32
@@ -7,15 +7,17 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - 3dbi antena
 
 ### Currently working on:
-- Testing E220-400M33S driver and communication between two modules.
-    - add IRQ_TIMEOUT handler 
-    - how does radio_scanChannel return 0
+- DB 
+    - DB part download - request done, tx and rx functions need to be added
+    - DB end - ends download and notifies everyone involved
+    - modify functions to load bytes manually into payload to prevent messing up endianness
 
 ### To do:
 - DB 
-    - DB download
     - updates
-- Add function for faulty transmission handling
+- Verify wether the echo request runs or not.
+- Create a branch
+    - Edit function Transmit to "send" packets to received buffer so that way we can self check
 
 ### Currently finished implementing:
 - Routing
@@ -31,6 +33,8 @@ I’m working on creating a LoRa-based WWAN (Wireless Wide Area Network).
 - Transmit and Receive functions
     - Listen Before Talk
 - ARP
+- DB 
+    - DB download
 - Main Loop
     - Setup - ISR -> Receive, initialize tables, etc.
     - Transmit and process task

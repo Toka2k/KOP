@@ -27,7 +27,7 @@ unsigned short HASH_PH(packed_header ph){
     unsigned short hash = 0;
 
     int i = 0;
-     for (i = 0; i < 7; i++){
+    for (i = 0; i < 7; i++){
         hash = (hash + ph.addresses[i]) * secret[(routers[(ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) / 32] & (1 << (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8)) >> (ph.addresses[1] & 0x3) << 12 | ph.addresses[2] << 4 | (ph.addresses[3] & 0xf0) % 8][i % SECRET_COUNT];
     }
 
@@ -248,7 +248,7 @@ void process_packet(void* pvParameters){
         hw_flags = 0;
 
         //read packet from queue
-        if (to_send.count == 0){
+        if (received.count == 0){
             hw_flags |= EMPTY_BUF;
             continue;
         }

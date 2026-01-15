@@ -2,7 +2,7 @@
 
 //defining important variables and lists
 unit null = {0};
-static unit __table[MAX_TABLE_SIZE] = {0};
+unit __table[MAX_TABLE_SIZE] = {0};
 flags FLAGS = {0};
 size __table_size = {0};
 static addr __reserved_addresses[] = {0, 0x3fff};

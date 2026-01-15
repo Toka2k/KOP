@@ -6,6 +6,7 @@
 
 #include <dhcp/dhcp.h>
 #include <arp/arp.h>
+#include <db/db.h>
 
 #ifdef __cplusplus
 extern "C" {

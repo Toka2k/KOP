@@ -5,6 +5,7 @@ SemaphoreHandle_t irqSemaphore;
 SemaphoreHandle_t txDoneSemaphore;
 SemaphoreHandle_t rxDoneSemaphore;
 SemaphoreHandle_t cadDoneSemaphore;
+SemaphoreHandle_t irqTimeoutSemaphore;
 SemaphoreHandle_t radio_mutex;
 
 QueueHandle_t irq_status_queue;
@@ -35,6 +36,7 @@ void radio_loop(void* pvParameters){
             xSemaphoreGive(cadDoneSemaphore);
         }
         if (irq_status & IRQ_TIMEOUT){
+            xSemaphoreGive(irqTimeoutSemaphore);
         }
 
         xSemaphoreGive(radio_mutex);
@@ -93,6 +95,7 @@ int radio_init(double freq, byte power, byte ramptime, byte sf, byte bw, byte cr
                             | IRQ_CAD_DETECTED
                             | IRQ_TIMEOUT;
 
+    semaphore_setup();
     radio_setup();
     byte sync_word[2] = {0x24, 0x24};
 
@@ -108,10 +111,10 @@ int radio_init(double freq, byte power, byte ramptime, byte sf, byte bw, byte cr
     calibrateImage();
 
     setBufferBaseAddress();
-    setModulationParams(sf, bw, cr);
-    setPacketParams(5);
+    setModulationParams(current_settings.sf, current_settings.bw, current_settings.cr);
+    setPacketParams(current_settings.pl);
     
-    //clearIrqStatus(0xFFFF);
+    clearIrqStatus(0xFFFF);
 
     setDioIrqParams(irq_map, irq_map/*IRQ_TX_DONE | IRQ_RX_DONE | IRQ_CAD_DONE | IRQ_TIMEOUT*/);
     writeRegister(sync_word, 2, 0x740);
@@ -130,16 +133,19 @@ void semaphore_setup(){
     txDoneSemaphore = xSemaphoreCreateBinary();
     rxDoneSemaphore = xSemaphoreCreateBinary();
     cadDoneSemaphore = xSemaphoreCreateBinary();
+    irqTimeoutSemaphore = xSemaphoreCreateBinary();
 
     xSemaphoreGive(irqSemaphore);
     xSemaphoreGive(txDoneSemaphore);
     xSemaphoreGive(rxDoneSemaphore);
     xSemaphoreGive(cadDoneSemaphore);
+    xSemaphoreGive(irqTimeoutSemaphore);
     
     xSemaphoreTake(irqSemaphore, portMAX_DELAY);
     xSemaphoreTake(txDoneSemaphore, portMAX_DELAY);
     xSemaphoreTake(rxDoneSemaphore, portMAX_DELAY);
     xSemaphoreTake(cadDoneSemaphore, portMAX_DELAY);
+    xSemaphoreTake(irqTimeoutSemaphore, portMAX_DELAY);
 
     radio_mutex = xSemaphoreCreateMutex();
 

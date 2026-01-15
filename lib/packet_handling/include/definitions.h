@@ -12,7 +12,7 @@
 #define LORA_DIO1  26    // DIO1 interrupt
 #define LORA_BUSY  27    // BUSY pin
 
-// HW_FLAGS
+// PACKET FLAGS
 #define SUCCESS 0 
 #define ERROR (1)
 #define INVALID_HASH (1<<1)
@@ -23,6 +23,8 @@
 #define NOT_NEIGHBOUR (1<<6)
 #define EMPTY_BUF (1<<7)
 #define CHANNEL_FREE (1<<8)
+#define PACKET_RECEIVED
+#define PACKET_LAST (1<<10)
 
 // Driver Errors
 #define INVALID_SF (1)
@@ -43,6 +45,8 @@
 #define P_ARP   (0x2)
 #define P_DHCP  (0x3)
 
+#define MAX_ITERATIONS (349)
+
 // Hardware
 #define MAX_STORED_PACKETS (16)
 #define MAX_NEIGHBOURS (256)
@@ -57,6 +61,7 @@
 #define RESERVED_ADDRESSES 2 
 #define ADDRESS_BITS 14
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
+#define TABLE_SIZE __table_size.size
 
 // IRQ Flags
 #define IRQ_TX_DONE (1)
@@ -141,6 +146,5 @@ typedef struct __attribute__((packed)){
     byte cr;
     byte pl;
 } LLCC68_SETTINGS;
-
 
 #endif
