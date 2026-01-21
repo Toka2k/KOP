@@ -10,7 +10,7 @@ static unsigned short counter = 0;
 static unsigned short corrupted_total = 0;
 static unsigned short corrupted[MAX_ITERATIONS];
 const unsigned short max_units = (PAYLOAD_SIZE - sizeof(counter) - sizeof(short) - 1) / sizeof(unit);
-byte length = (max_units * sizeof(unit)) + sizeof(counter) + sizeof(short) + 1;
+byte length = (max_units * sizeof(unit)) + 7;
 
 int payload_hash(byte* data, byte length){
     int h = 0;
@@ -174,8 +174,10 @@ int db_download_receive(packet* p){
 
 int db_download_end(){
     iterations = 0, counter = 0; corrupted_total = 0;
+    state = IDLE, length = (max_units * sizeof(unit)) + 7;
+    peer.address = 0; 
     for(int i = 0; i < MAX_ITERATIONS; i++) {corrupted[i] = 0;};
-
+    return SUCCESS;
 }
 
 int DB(packet* p){
@@ -203,6 +205,8 @@ int DB(packet* p){
         }
         counter += its;
         return SUCCESS;
+    } else if (p->data[0] == DOWNLOAD_END){
+        return 
     }
     
     if (db_download_receive(p) != PACKET_LAST){ return PACKET_RECEIVED; }
@@ -210,6 +214,9 @@ int DB(packet* p){
     if (corrupted_total != 0){
         db_download_part_loop(p);
     }
+
+    byte state = DOWNLOAD_END;
+    route(peer.address, 1, P_DB, &state);
 
     db_download_end();
 

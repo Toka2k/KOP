@@ -8,8 +8,6 @@ I’m working on creating a LoRa-based LPWAN (Low Power Wide Area Network).
 
 ### Currently working on:
 - DB 
-    - DB part download - request done, tx and rx functions need to be added
-    - DB end - ends download and notifies everyone involved
     - modify functions to load bytes manually into payload to prevent messing up endianness
 
 ### To do:
@@ -19,7 +17,6 @@ I’m working on creating a LoRa-based LPWAN (Low Power Wide Area Network).
 
 - DB 
     - updates
-- Verify wether the echo request runs or not.
 - Create a branch
     - Edit function Transmit to "send" packets to received buffer so that way we can self check
 
@@ -39,6 +36,8 @@ I’m working on creating a LoRa-based LPWAN (Low Power Wide Area Network).
 - ARP
 - DB 
     - DB download
+    - DB end
+    - DB part download
 - Main Loop
     - Setup - ISR -> Receive, initialize tables, etc.
     - Transmit and process task
