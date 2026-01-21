@@ -13,6 +13,10 @@ I’m working on creating a LoRa-based LPWAN (Low Power Wide Area Network).
     - modify functions to load bytes manually into payload to prevent messing up endianness
 
 ### To do:
+- Add flags to signal when the protocol finishes
+    - for example dhcp assings me address, the device releases its semaphore to unblock task waiting for that address
+- Potentialy unsafe packet_buffering, may need to rewrite it to task queues.
+
 - DB 
     - updates
 - Verify wether the echo request runs or not.

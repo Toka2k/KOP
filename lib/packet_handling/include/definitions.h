@@ -23,7 +23,7 @@
 #define NOT_NEIGHBOUR (1<<6)
 #define EMPTY_BUF (1<<7)
 #define CHANNEL_FREE (1<<8)
-#define PACKET_RECEIVED
+#define PACKET_RECEIVED (1<<9)
 #define PACKET_LAST (1<<10)
 
 // Driver Errors
@@ -49,8 +49,8 @@
 
 // Hardware
 #define MAX_STORED_PACKETS (16)
-#define MAX_NEIGHBOURS (256)
-#define PAYLOAD_SIZE (256 - HEADER_SIZE)
+#define MAX_NEIGHBOURS (255)
+#define PAYLOAD_SIZE (255 - HEADER_SIZE)
 #define HEADER_SIZE (12)
 
 #define LDO (0)

@@ -17,8 +17,8 @@ void setup() {
 
     //xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 3, NULL, 1);
     //xTaskCreatePinnedToCore(Receive, "Receive task", 2048, NULL, 3, NULL, 1);
-    xTaskCreatePinnedToCore(radio_loop, "Radio Loop task", 4096, (void*) Receive, 2, NULL, 1);
-    //xTaskCreatePinnedToCore(process_packet, "Packet processing task", 2048, NULL, 2, NULL, 0);
+    xTaskCreatePinnedToCore(radio_loop, "Radio Loop task", 2048, (void*) Receive, 2, NULL, 1);
+    //xTaskCreatePinnedToCore(process_packet, "Packet processing task", 16834, NULL, 2, NULL, 0);
     //Serial.println(radio_scanChannel(), BIN);
 }
 
