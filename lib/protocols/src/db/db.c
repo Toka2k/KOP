@@ -33,7 +33,7 @@ int db_download_all_loop(packet* p){
     counter = 0;
     unsigned int hash = 0;
     iterations = ceil(TABLE_SIZE / max_units);
-    length = (max_units * sizeof(unit)) + sizeof(counter) + sizeof(short) + 1;
+    length = (max_units * sizeof(unit)) + 7;
     byte payload[length];
 
     // We first inform the number of iterations to wait for
@@ -104,7 +104,7 @@ int db_download_part_request(addr address){
 
 int db_download_part_loop(packet* p){
     unsigned int hash = 0;
-    length = (max_units * sizeof(unit)) + sizeof(counter) + sizeof(short) + 1;
+    length = (max_units * sizeof(unit)) + 7;
     byte payload[length];
 
     // We first inform the number of iterations to wait for
@@ -170,6 +170,12 @@ int db_download_receive(packet* p){
     }
     
     return SUCCESS;
+}
+
+int db_download_end(){
+    iterations = 0, counter = 0; corrupted_total = 0;
+    for(int i = 0; i < MAX_ITERATIONS; i++) {corrupted[i] = 0;};
+
 }
 
 int DB(packet* p){
