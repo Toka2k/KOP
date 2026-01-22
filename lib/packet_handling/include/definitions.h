@@ -47,10 +47,14 @@
 
 #define MAX_ITERATIONS (349)
 
+// Reserved Addresses
+#define LOCAL_BROADCAST (0x3fff)
+
 // Hardware
-#define MAX_STORED_PACKETS (16)
+#define MAX_STORED_PACKETS (8)
+#define PACKET_SIZE (255)
 #define MAX_NEIGHBOURS (255)
-#define PAYLOAD_SIZE (255 - HEADER_SIZE)
+#define PAYLOAD_SIZE (PACKET_SIZE - HEADER_SIZE)
 #define HEADER_SIZE (12)
 
 #define LDO (0)

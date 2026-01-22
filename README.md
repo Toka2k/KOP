@@ -7,6 +7,8 @@ I’m working on creating a LoRa-based LPWAN (Low Power Wide Area Network).
 - 3dbi antena
 
 ### Currently working on:
+- Create a branch
+    - Edit function Transmit to "send" packets to received buffer so that way we can self check
 - DB 
     - modify functions to load bytes manually into payload to prevent messing up endianness
 
@@ -17,8 +19,6 @@ I’m working on creating a LoRa-based LPWAN (Low Power Wide Area Network).
 
 - DB 
     - updates
-- Create a branch
-    - Edit function Transmit to "send" packets to received buffer so that way we can self check
 
 ### Currently finished implementing:
 - Routing

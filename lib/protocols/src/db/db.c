@@ -206,7 +206,8 @@ int DB(packet* p){
         counter += its;
         return SUCCESS;
     } else if (p->data[0] == DOWNLOAD_END){
-        return 
+        db_download_end();
+        return SUCCESS;
     }
     
     if (db_download_receive(p) != PACKET_LAST){ return PACKET_RECEIVED; }
@@ -216,7 +217,7 @@ int DB(packet* p){
     }
 
     byte state = DOWNLOAD_END;
-    route(peer.address, 1, P_DB, &state);
+    route(peer, 1, P_DB, &state);
 
     db_download_end();
 

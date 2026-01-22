@@ -207,7 +207,7 @@ void Transmit(void* pvParameters){
         //increment seqnum;
         int i = 0;
         for (; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < MAX_NEIGHBOURS; i++){}
-        if (i == MAX_NEIGHBOURS){
+        if (i == MAX_NEIGHBOURS && LOCAL_BROADCAST != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc))){
             hw_flags |= NOT_NEIGHBOUR;
             dequeue(&to_send);
             xSemaphoreGive(radio_mutex);
