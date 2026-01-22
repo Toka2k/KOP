@@ -14,6 +14,7 @@ byte neighbours_size = 0;
 
 QueueHandle_t received_queue;
 QueueHandle_t to_send_queue;
+QueueHandle_t queue;
 
 // First set of magic numbers, is for hosts
 // Second set of magic numbers, is for routers
@@ -127,17 +128,18 @@ void Receive(void* pvParameters){
         xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
 
         hw_flags = 0;
-        byte packet_length = getRxPayloadLength();
+        /*byte packet_length = getRxPayloadLength();
         if(packet_length == 1){
             readBuffer(&packet_length, 1);
             setPacketParams(packet_length);
         } else {
             setPacketParams(1);
-        }
+        }*/
 
-        packed_header ph = {0};
-        readBuffer((byte*)&ph, sizeof(packed_header));
+        packet p;
+        xQueueReceive(queue, &p, portMAX_DELAY);
 
+        packed_header ph = p.h;
         unpacked_header uh = UNPACK_HEADER(ph);
 
         //compare hmac
@@ -203,6 +205,7 @@ void Transmit(void* pvParameters){
     to_send_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
 
     packet p;
+    queue = xQueueCreate(4, PACKET_SIZE);
     for (;;){
         hw_flags = 0;
 
@@ -232,16 +235,17 @@ void Transmit(void* pvParameters){
         p.h.hmac[1] = hmac & 0xff;
 
         //scaning
-        while (radio_scanChannel() & IRQ_CAD_DETECTED){
+        /*while (radio_scanChannel() & IRQ_CAD_DETECTED){
             vTaskDelay(pdMS_TO_TICKS(random() % 11));
         }
 
         irq_status = radio_transmit(&p);
         if (irq_status & IRQ_TIMEOUT){
             hw_flags |= ERROR;
-        }
+        }*/
 
         xSemaphoreGive(radio_mutex);
+        xQueueSend(queue, &p, portMAX_DELAY);
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
