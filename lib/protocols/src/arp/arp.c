@@ -1,5 +1,7 @@
 #include <arp/arp.h>
-#include <packet_buffering.h>
+#include <address_table.h>
+#include <packet_handling.h>
+
 
 int ECHO_REQ(addr address){
     unpacked_header uh = {address.address, __my_address.address, 0, 0, 1, P_ARP, 0};
@@ -8,7 +10,7 @@ int ECHO_REQ(addr address){
     byte data[1] = {0};
 
     packet p = packet_init(ph, data);
-    enqueue(&to_send, &p);
+    xQueueSend(to_send_queue, &p, portMAX_DELAY);
     return SUCCESS; 
 }
 
@@ -21,7 +23,7 @@ int ECHO_REPLY(packet* p){
     p->data[0] = 1;
     *p = packet_init(p->h, p->data);
 
-    enqueue(&to_send, p);
+    xQueueSend(to_send_queue, p, portMAX_DELAY);
 
     return SUCCESS;
 }

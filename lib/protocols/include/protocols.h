@@ -1,8 +1,8 @@
 #ifndef ___PROTOCOLS___
 #define ___PROTOCOLS___
 
-#include <packet_buffering.h>
 #include <address_table.h>
+#include <definitions.h>
 
 #include <dhcp/dhcp.h>
 #include <arp/arp.h>

@@ -4,9 +4,6 @@
 #include <Arduino.h>
 #include <definitions.h>
 
-#include <address_table.h>
-#include <driver-al.h>
-
 #define SECRET_COUNT 1
 
 #ifdef __cplusplus
@@ -19,6 +16,9 @@ extern addr neighbours[MAX_NEIGHBOURS];
 extern byte neighbours_size;
 
 extern SemaphoreHandle_t radio_mutex;
+
+extern QueueHandle_t received_queue;
+extern QueueHandle_t to_send_queue;
 
 int get_hw_flags();
 addr find_addr(addr address);

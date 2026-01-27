@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 #include <definitions.h>
-#include <driver.h>
 
 #ifdef __cplusplus
 extern "C"{

@@ -1,8 +1,6 @@
 #ifndef ___DHCP___
 #define ___DHCP___
 
-#include <packet_handling.h>
-#include <address_table.h>
 #include <definitions.h>
 
 #ifdef __cplusplus

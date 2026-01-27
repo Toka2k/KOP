@@ -1,5 +1,8 @@
 #include <packet_handling.h>
-#include <packet_buffering.h>
+
+#include <address_table.h>
+#include <driver.h>
+#include <driver-al.h>
 
 static int hw_flags = 0;
 
@@ -9,13 +12,12 @@ static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
 addr neighbours[MAX_NEIGHBOURS] = {0};
 byte neighbours_size = 0;
 
+QueueHandle_t received_queue;
+QueueHandle_t to_send_queue;
 
 // First set of magic numbers, is for hosts
 // Second set of magic numbers, is for routers
 byte secret[2][SECRET_COUNT] = {{19},{11}};
-
-// created multiple hash functions because of the initiallization problems with
-// packet headers.
 
 int init_zero(void* ptr, int ptr_len, int type_size){
     for(int i = 0; i < ptr_len * type_size; i++){
@@ -121,7 +123,7 @@ void Receive(void* pvParameters){
     for(;;){
         xSemaphoreTake(rxDoneSemaphore, portMAX_DELAY);
         xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
-        //xSemaphoreTake(radio_mutex, portMAX_DELAY);
+        xSemaphoreTake(radio_mutex, portMAX_DELAY);
 
         hw_flags = 0;
         byte packet_length = getRxPayloadLength();
@@ -186,32 +188,28 @@ void Receive(void* pvParameters){
     
         packet p = packet_init(ph, data);
     
-        enqueue(&received, &p);
+        xQueueSend(received_queue, &p, portMAX_DELAY);
     }
 }
 
 void Transmit(void* pvParameters){
     unsigned short irq_status = 0;
+    received_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
+    to_send_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
+
+    packet p;
     for (;;){
         hw_flags = 0;
 
-        //read packet from queue
-        if (to_send.count == 0){
-            hw_flags |= EMPTY_BUF;
-            vTaskDelay(pdMS_TO_TICKS(10));
-            continue;
-        }
+        xQueueReceive(to_send_queue, &p, portMAX_DELAY);
         xSemaphoreTake(radio_mutex, portMAX_DELAY);
-
-        packet p = *to_send.buf[to_send.index];
 
         //increment seqnum;
         int i = 0;
         for (; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < neighbours_size; i++){}
         if (i == neighbours_size && LOCAL_BROADCAST != ((p.h.addresses[0] << 6) | ((p.h.addresses[1] & 0xfc) >> 2))){
             hw_flags |= NOT_NEIGHBOUR;
-            dequeue(&to_send);
-            //xSemaphoreGive(radio_mutex);
+            xSemaphoreGive(radio_mutex);
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
@@ -234,29 +232,21 @@ void Transmit(void* pvParameters){
         irq_status = radio_transmit(&p);
         if (irq_status & IRQ_TIMEOUT){
             hw_flags |= ERROR;
-            dequeue(&to_send);
             xSemaphoreGive(radio_mutex);
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
 
-        dequeue(&to_send);
         xSemaphoreGive(radio_mutex);
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
 void process_packet(void* pvParameters){
+    packet p;
     for (;;){
+        xQueueReceive(received_queue, &p, portMAX_DELAY);
         hw_flags = 0;
-
-        //read packet from queue
-        if (received.count == 0){
-            hw_flags |= EMPTY_BUF;
-            vTaskDelay(pdMS_TO_TICKS(5));
-            continue;
-        }
-        packet p = *received.buf[received.index];
 
         unpacked_header received_uh = UNPACK_HEADER(p.h);
         addr net_d = {received_uh.net_d};
@@ -280,7 +270,7 @@ void process_packet(void* pvParameters){
         packed_header send_ph = PACK_HEADER(send_uh);
         p = packet_init(p.h, p.data);
 
-        enqueue(&to_send, &p);
+        xQueueSend(to_send_queue, &p, portMAX_DELAY);
         hw_flags &= SUCCESS;
     }
 }
@@ -347,7 +337,7 @@ int route(addr dest, byte length, byte protocol_id, byte* data){
     packed_header ph = PACK_HEADER(uh);
     
     packet p = packet_init(ph, data);
-    enqueue(&to_send, &p);
+    xQueueSend(to_send_queue, &p, portMAX_DELAY);
     
     hw_flags = SUCCESS;
     return hw_flags;

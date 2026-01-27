@@ -1,5 +1,6 @@
 #include <dhcp/dhcp.h>
-#include <packet_buffering.h>
+#include <packet_handling.h>
+#include <address_table.h>
 
 static int req_random = 0;
 static int off_random = 0;
@@ -27,11 +28,7 @@ int DHCP_REQ(){
 
     packet p = packet_init(ph, payload);
 
-    enqueue(&to_send, &p);
-    int flags;
-    if (flags = get_hw_flags() != SUCCESS){
-        return flags;
-    }
+    xQueueSend(to_send_queue, &p, portMAX_DELAY);
     return SUCCESS;
 }
 
@@ -59,7 +56,7 @@ int DHCP_OFFER(byte* data){
 
     packet p = packet_init(ph, payload);
     
-    enqueue(&to_send, &p);
+    xQueueSend(to_send_queue, &p, portMAX_DELAY);
 
     free(payload);
 
@@ -95,12 +92,7 @@ int DHCP_ACK(packet* p){
 
     *p = packet_init(p->h, send_data);
     
-    enqueue(&to_send, p);
-
-    int flags;
-    if ((flags = get_hw_flags()) != SUCCESS){
-        return flags;
-    }
+    xQueueSend(to_send_queue, p, portMAX_DELAY);
 
     return SUCCESS;
 }
@@ -126,7 +118,7 @@ int DHCP_FIN(packet* p){
     
     *p = packet_init(send, _data);
 
-    enqueue(&to_send, p);
+    xQueueSend(to_send_queue, p, portMAX_DELAY);
 
     int flags;
     if ((flags = get_hw_flags()) != SUCCESS){
@@ -173,14 +165,9 @@ int DHCP_DENY(){
     req_random = 0;
 
     packet p = packet_init(ph, data);
-    enqueue(&to_send, &p);
+    xQueueSend(to_send_queue, &p, portMAX_DELAY);
 
     DHCP_DROP();
-
-    int flags;
-    if ((flags = get_hw_flags()) != SUCCESS){
-        return flags;
-    }
 
     return SUCCESS;
 }
