@@ -15,7 +15,7 @@ void setup() {
     xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 3, NULL, 1);
     delay(1);
     xTaskCreatePinnedToCore(Receive, "Receive task", 2048, NULL, 3, NULL, 1);
-    xTaskCreatePinnedToCore(radio_loop, "Radio Loop task", 2048, (void*) Receive, 2, NULL, 1);
+    xTaskCreatePinnedToCore(radio_loop, "Radio Loop task", 2048, NULL, 2, NULL, 1);
     xTaskCreatePinnedToCore(process_packet, "Packet processing task", 2048, NULL, 2, NULL, 0);
 
     delay(100);
@@ -23,18 +23,7 @@ void setup() {
 
 
 void loop() {
-    if (Serial.available()) {
-        Serial.print("Enter Command: ");
-        String command = Serial.readStringUntil('\n');
-        command.trim();
-        if (command == "route") {
-            Serial.println("Echoing...");
-            addr a = {.address = LOCAL_BROADCAST};
-            ECHO_REQ(a);
-        } else {
-            Serial.print("Unknown command: ");
-            Serial.println(command);
-        }
-        vTaskDelay(100);
-    }
+    addr a = {.address = LOCAL_BROADCAST};
+    ECHO_REQ(a);
+    vTaskDelay(30000);
 }

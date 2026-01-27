@@ -128,6 +128,7 @@ void Receive(void* pvParameters){
         xSemaphoreTake(rxDoneSemaphore, portMAX_DELAY);
         xSemaphoreTake(radio_mutex, portMAX_DELAY);
         xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
+        xQueueReceive(queue, &p, portMAX_DELAY);
 
         hw_flags = 0;
         /*byte packet_length = getRxPayloadLength();
@@ -138,8 +139,8 @@ void Receive(void* pvParameters){
             setPacketParams(1);
         }*/
 
-        packet p;
-        xQueueReceive(queue, &p, portMAX_DELAY);
+        print("Received:");
+        print_packet(&p);
 
         packed_header ph = p.h;
         unpacked_header uh = UNPACK_HEADER(ph);
@@ -147,6 +148,7 @@ void Receive(void* pvParameters){
         //compare hmac
         if (((ph.hmac[0] << 8) + ph.hmac[1]) != HASH_PH(ph)){
             hw_flags |= INVALID_HASH; 
+            xSemaphoreGive(radio_mutex);
             continue;
         }
 
@@ -166,12 +168,12 @@ void Receive(void* pvParameters){
         }
 
         // if its not for me or local broadcast, we drop the packet
-        if (uh.mac_d != LOCAL_BROADCAST || uh.mac_d != __my_address.address){
+        if (uh.mac_d != LOCAL_BROADCAST && uh.mac_d != __my_address.address){
             xSemaphoreGive(radio_mutex);
             continue;
         }
         
-        if(__my_address.address == uh.mac_s){
+        if(__my_address.address != uh.mac_s){
             //compare seqnum
             int i = 0;
             for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
@@ -226,7 +228,6 @@ void Transmit(void* pvParameters){
                 vTaskDelay(pdMS_TO_TICKS(10));
                 continue;
             }
-
             my_seqnums[i]++;
             p.h.seqnum = my_seqnums[i];
         }
@@ -247,6 +248,14 @@ void Transmit(void* pvParameters){
         }*/
 
         xSemaphoreGive(radio_mutex);
+
+        print("Sent:");
+        print_packet(&p);
+
+        xSemaphoreGive(rxDoneSemaphore);
+        unsigned short s = IRQ_RX_DONE;
+        xQueueSend(irq_status_queue, &s, portMAX_DELAY);
+
         xQueueSend(queue, &p, portMAX_DELAY);
         vTaskDelay(pdMS_TO_TICKS(10));
     }
