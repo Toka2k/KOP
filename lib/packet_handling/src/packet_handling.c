@@ -4,6 +4,8 @@
 #include <driver.h>
 #include <driver-al.h>
 
+#include <print.h>
+
 static int hw_flags = 0;
 
 double __channels[] = {8680E5};

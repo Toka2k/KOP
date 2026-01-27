@@ -2,6 +2,7 @@
 #include <address_table.h>
 #include <packet_handling.h>
 
+#include <print.h>
 
 int ECHO_REQ(addr address){
     unpacked_header uh = {address.address, __my_address.address, 0, 0, 1, P_ARP, 0};
@@ -22,6 +23,8 @@ int ECHO_REPLY(packet* p){
     packed_header ph = PACK_HEADER(uh);
     byte data[1] = {1};
     *p = packet_init(ph, data);
+
+    print("Received echo from %02X", uh.mac_d);
 
     xQueueSend(to_send_queue, p, portMAX_DELAY);
 

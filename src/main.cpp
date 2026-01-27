@@ -23,5 +23,18 @@ void setup() {
 
 
 void loop() {
-    vTaskDelay(portMAX_DELAY);
+    if (Serial.available()) {
+        Serial.print("Enter Command: ");
+        String command = Serial.readStringUntil('\n');
+        command.trim();
+        if (command == "route") {
+            Serial.println("Echoing...");
+            addr a = {.address = LOCAL_BROADCAST};
+            ECHO_REQ(a);
+        } else {
+            Serial.print("Unknown command: ");
+            Serial.println(command);
+        }
+        vTaskDelay(100);
+    }
 }

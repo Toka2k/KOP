@@ -97,12 +97,12 @@ int radio_init(double freq, byte power, byte ramptime, byte sf, byte bw, byte cr
                             | IRQ_TIMEOUT;
 
     semaphore_setup();
-    radio_setup();
+    //radio_setup();
     byte sync_word[2] = {0x24, 0x24};
 
     xSemaphoreTake(radio_mutex, portMAX_DELAY);
 
-    setStandby(STDBY_RC);
+    /*setStandby(STDBY_RC);
     calibrate();
     
     setPacketTypeLora();
@@ -117,10 +117,8 @@ int radio_init(double freq, byte power, byte ramptime, byte sf, byte bw, byte cr
     
     clearIrqStatus(0xFFFF);
 
-    setDioIrqParams(irq_map, irq_map/*IRQ_TX_DONE | IRQ_RX_DONE | IRQ_CAD_DONE | IRQ_TIMEOUT*/);
-    writeRegister(sync_word, 2, 0x740);
-
-    setRx(320, 5);
+    setDioIrqParams(irq_map, irq_map/*IRQ_TX_DONE | IRQ_RX_DONE | IRQ_CAD_DONE | IRQ_TIMEOUT);
+    writeRegister(sync_word, 2, 0x740);*/
 
     xSemaphoreGive(radio_mutex);
 
