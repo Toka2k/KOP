@@ -18,6 +18,7 @@ int ECHO_REPLY(packet* p){
     uh.mac_s = __my_address.address;
 
     p->h = PACK_HEADER(uh);
+    p->data[0] = 1;
     *p = packet_init(p->h, p->data);
 
     enqueue(&to_send, p);
