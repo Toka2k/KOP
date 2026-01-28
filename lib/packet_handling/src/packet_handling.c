@@ -197,7 +197,7 @@ void Receive(void* pvParameters){
         readBuffer(data, ph.length);
     
         p = packet_init(ph, data);
-        
+
         xSemaphoreGive(radio_mutex);
         xQueueSend(received_queue, &p, portMAX_DELAY);
     }
@@ -218,7 +218,7 @@ void Transmit(void* pvParameters){
         
         unpacked_header uh = UNPACK_HEADER(p.h);
 
-        if(__my_address.address != uh.mac_s){
+       if(__my_address.address != uh.mac_s){
             //increment seqnum;
             int i = 0;
             for (; neighbours[i].address != uh.mac_d && i < neighbours_size; i++){}
@@ -228,6 +228,7 @@ void Transmit(void* pvParameters){
                 vTaskDelay(pdMS_TO_TICKS(10));
                 continue;
             }
+
             my_seqnums[i]++;
             p.h.seqnum = my_seqnums[i];
         }
@@ -279,13 +280,13 @@ void process_packet(void* pvParameters){
         unpacked_header send_uh = received_uh;
 
         short next_hop = (node.hnextHop << 8 | node.lnextHop);
-        
+
         if (next_hop != __my_address.address && (next_hop != 0)){
             send_uh.mac_s = __my_address.address;
             send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
-
+            
             packed_header send_ph = PACK_HEADER(send_uh);
-            p = packet_init(p.h, p.data);
+            p = packet_init(send_ph, p.data);
 
             xQueueSend(to_send_queue, &p, portMAX_DELAY);
             hw_flags &= SUCCESS;
