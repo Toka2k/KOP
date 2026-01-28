@@ -120,10 +120,11 @@ void sort_neighbours(){
 
 void Receive(void* pvParameters){
     unsigned short irq_status = 0;
+    packet p;
     for(;;){
         xSemaphoreTake(rxDoneSemaphore, portMAX_DELAY);
-        xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
         xSemaphoreTake(radio_mutex, portMAX_DELAY);
+        xQueueReceive(irq_status_queue, &irq_status, portMAX_DELAY);
 
         hw_flags = 0;
         byte packet_length = getRxPayloadLength();
@@ -162,32 +163,36 @@ void Receive(void* pvParameters){
 
         // if its not for me or local broadcast, we drop the packet
         if (uh.mac_d != LOCAL_BROADCAST || uh.mac_d != __my_address.address){
+            xSemaphoreGive(radio_mutex);
             continue;
         }
         
         if(__my_address.address == uh.mac_s){
-        //compare seqnum
-        int i = 0;
-        for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
-        if (i == neighbours_size){
-            hw_flags |= NOT_NEIGHBOUR;
-            continue; 
-        }
+            //compare seqnum
+            int i = 0;
+            for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
+            if (i == neighbours_size){
+                hw_flags |= NOT_NEIGHBOUR;
+                xSemaphoreGive(radio_mutex);
+                continue; 
+            }
 
-        // We track seqnums of neighbours
-        if (neighbour_seqnums[i] == ph.seqnum){
-            neighbour_seqnums[i]++;
-        } else {
-            hw_flags |= INVALID_SEQNUM;
-            continue;
+            // We track seqnums of neighbours
+            if (neighbour_seqnums[i] == ph.seqnum){
+                neighbour_seqnums[i]++;
+            } else {
+                hw_flags |= INVALID_SEQNUM;
+                xSemaphoreGive(radio_mutex);
+                continue;
             }
         }
 
         byte data[ph.length];
         readBuffer(data, ph.length);
     
-        packet p = packet_init(ph, data);
-    
+        p = packet_init(ph, data);
+        
+        xSemaphoreGive(radio_mutex);
         xQueueSend(received_queue, &p, portMAX_DELAY);
     }
 }
@@ -203,21 +208,23 @@ void Transmit(void* pvParameters){
 
         xQueueReceive(to_send_queue, &p, portMAX_DELAY);
         xSemaphoreTake(radio_mutex, portMAX_DELAY);
+        
+        unpacked_header uh = UNPACK_HEADER(p.h);
 
-        //increment seqnum;
-        int i = 0;
-        for (; neighbours[i].address != ((p.h.addresses[0] << 6) | (p.h.addresses[1] & 0xfc) >> 2) && i < neighbours_size; i++){}
-        if (i == neighbours_size && LOCAL_BROADCAST != ((p.h.addresses[0] << 6) | ((p.h.addresses[1] & 0xfc) >> 2))){
-            hw_flags |= NOT_NEIGHBOUR;
-            xSemaphoreGive(radio_mutex);
-            vTaskDelay(pdMS_TO_TICKS(10));
-            continue;
+        if(__my_address.address != uh.mac_s){
+            //increment seqnum;
+            int i = 0;
+            for (; neighbours[i].address != uh.mac_d && i < neighbours_size; i++){}
+            if (i == neighbours_size && LOCAL_BROADCAST != uh.mac_d){
+                hw_flags |= NOT_NEIGHBOUR;
+                xSemaphoreGive(radio_mutex);
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
+
+            my_seqnums[i]++;
+            p.h.seqnum = my_seqnums[i];
         }
-
-        if (((p.h.addresses[0] << 6) + p.h.addresses[1]) != LOCAL_BROADCAST){
-        my_seqnums[i]++;
-        p.h.seqnum = my_seqnums[i];
-        } else {p.h.seqnum = 0;}
 
         //calculate HMAC
         unsigned short hmac = HASH_PH(p.h);
@@ -232,9 +239,6 @@ void Transmit(void* pvParameters){
         irq_status = radio_transmit(&p);
         if (irq_status & IRQ_TIMEOUT){
             hw_flags |= ERROR;
-            xSemaphoreGive(radio_mutex);
-            vTaskDelay(pdMS_TO_TICKS(10));
-            continue;
         }
 
         xSemaphoreGive(radio_mutex);
@@ -252,26 +256,29 @@ void process_packet(void* pvParameters){
         addr net_d = {received_uh.net_d};
 
         unit node = find_unit(net_d);
-        if ((check(node)) != SUCCESS){
+        if ((check(node)) != SUCCESS && received_uh.mac_d != LOCAL_BROADCAST){
             hw_flags |= INVALID_ADDRESS;
             continue;
         }
 
         unpacked_header send_uh = received_uh;
-        send_uh.mac_s = __my_address.address;
-        if ((node.hnextHop << 8 | node.lnextHop) != __my_address.address){
+
+        short next_hop = (node.hnextHop << 8 | node.lnextHop);
+        
+        if (next_hop != __my_address.address && (next_hop != 0)){
+            send_uh.mac_s = __my_address.address;
             send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
+
+            packed_header send_ph = PACK_HEADER(send_uh);
+            p = packet_init(p.h, p.data);
+
+            xQueueSend(to_send_queue, &p, portMAX_DELAY);
+            hw_flags &= SUCCESS;
         } else {
             // Proccessing packets
             protocols[p.h.protocol_id](&p);
-            continue;
         }
-        
-        packed_header send_ph = PACK_HEADER(send_uh);
-        p = packet_init(p.h, p.data);
-
-        xQueueSend(to_send_queue, &p, portMAX_DELAY);
-        hw_flags &= SUCCESS;
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
