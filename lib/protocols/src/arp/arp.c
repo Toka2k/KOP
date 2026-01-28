@@ -19,9 +19,9 @@ int ECHO_REPLY(packet* p){
     uh.mac_d = uh.mac_s;
     uh.mac_s = __my_address.address;
 
-    p->h = PACK_HEADER(uh);
-    p->data[0] = 1;
-    *p = packet_init(p->h, p->data);
+    packed_header ph = PACK_HEADER(uh);
+    byte data[1] = {1};
+    *p = packet_init(ph, data);
 
     xQueueSend(to_send_queue, p, portMAX_DELAY);
 
