@@ -104,7 +104,7 @@ int DHCP_FIN(packet* p){
     // add to DB
     addr leased_address = {(*(p->data + 1) << 8 | *(p->data + 2))};
     add_unit(initialize_unit(leased_address.address, 1, __my_address.address));
-    if (HASH_PH(p->h) != *(unsigned short*)p->h.hmac){
+    if (HASH_PH(p->h) != ((p->h.hmac[0] << 8) + p->h.hmac[1])){
         routers[leased_address.address / 8] |= 1 << (leased_address.address % 8);
     } else {
         routers[leased_address.address / 8] &= ~(1 << (leased_address.address % 8));
