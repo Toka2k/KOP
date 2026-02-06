@@ -8,14 +8,15 @@ static int off_random = 0;
 short int get_unused_address(short int address){
     addr a = {address};
     unit result = find_unit(a);
-    if(_memcmp(&result, &null, sizeof(unit))){
+    if(_memcmp(&result, &null, sizeof(unit)) == 0){
         return address;
-    }; 
+    } 
 
     for(short int i = __highest_address.address; i < MAX_TABLE_SIZE; i++){
+        __highest_address.address = i;
         result = find_unit(__highest_address);
         if(_memcmp(&result, &null, sizeof(unit)) == 0){
-            return __highest_address.address = i;
+            return __highest_address.address;
         }
     }
 }
@@ -40,6 +41,7 @@ int DHCP_OFFER(byte* data){
     packed_header ph = PACK_HEADER(uh);
     
     ph.length = 4;
+    ph.protocol_id = P_DHCP;
     byte* payload = malloc(ph.length);
 
     if (payload == NULL){
@@ -60,11 +62,6 @@ int DHCP_OFFER(byte* data){
 
     free(payload);
 
-    int flags;
-    if ((flags = get_hw_flags()) != SUCCESS){
-        return flags;
-    }
-
     return SUCCESS;
 }
 
@@ -79,8 +76,8 @@ int DHCP_ACK(packet* p){
     send.mac_d = received_off.mac_s;
     send.net_d = received_off.net_s;
 
-    send.mac_s = (*(p->data + 1) << 8 | *(p->data + 2));
-    send.net_s = (*(p->data + 1) << 8 | *(p->data + 2));
+    send.mac_s = (*(p->data + 2) << 8 | *(p->data + 3));
+    send.net_s = (*(p->data + 2) << 8 | *(p->data + 3));
 
     __my_address.address = send.mac_s;
     
@@ -90,7 +87,7 @@ int DHCP_ACK(packet* p){
     packed_header send_packed = PACK_HEADER(send);
     byte send_data[] = {req_random, 2};
 
-    *p = packet_init(p->h, send_data);
+    *p = packet_init(send_packed, send_data);
     
     xQueueSend(to_send_queue, p, portMAX_DELAY);
 
@@ -102,8 +99,8 @@ int DHCP_FIN(packet* p){
     unpacked_header send_fin = {received_ack.mac_s, __my_address.address, received_ack.net_s, __my_address.address, 0};
 
     // add to DB
-    addr leased_address = {(*(p->data + 1) << 8 | *(p->data + 2))};
-    add_unit(initialize_unit(leased_address.address, 1, __my_address.address));
+    addr leased_address = {received_ack.mac_s};
+    add_unit(initialize_unit(leased_address.address, 1, leased_address.address));
     if (HASH_PH(p->h) != ((p->h.hmac[0] << 8) + p->h.hmac[1])){
         routers[leased_address.address / 8] |= 1 << (leased_address.address % 8);
     } else {
@@ -120,18 +117,13 @@ int DHCP_FIN(packet* p){
 
     xQueueSend(to_send_queue, p, portMAX_DELAY);
 
-    int flags;
-    if ((flags = get_hw_flags()) != SUCCESS){
-        return flags;
-    }
-
     off_random = 0;
 
     return SUCCESS;
 }
 
 int DHCP_ACC(packed_header ph){
-    clear_table();
+    //clear_table();
 
     add_unit(initialize_unit(__my_address.address, 0, __my_address.address));
 
@@ -181,8 +173,15 @@ int DHCP(packet* p){
         return INVALID_LENGTH;
     }
 
-    if (off_random != *p->data || req_random != *p->data){
+    // We are proccessing one request or we are not processing anything.
+    if (req_random && req_random != *p->data){
         return ERROR;
+    }
+    if (off_random && off_random != *p->data){
+        return ERROR;
+    }
+    if (off_random == 0){
+        off_random = *p->data;
     }
 
     if (*(p->data + 1) == 0){

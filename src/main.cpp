@@ -23,5 +23,8 @@ void setup() {
 
 
 void loop() {
-    vTaskDelay(portMAX_DELAY);
+    DHCP_REQ();
+    vTaskDelay(100);
+    print_table();
+    vTaskDelay(30000);
 }

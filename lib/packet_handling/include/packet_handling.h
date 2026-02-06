@@ -13,7 +13,7 @@ extern "C" {
 extern int (*protocols[256])(packet* p);
 
 extern addr neighbours[MAX_NEIGHBOURS];
-extern byte neighbours_size;
+extern int neighbours_size;
 
 extern SemaphoreHandle_t radio_mutex;
 

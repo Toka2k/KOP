@@ -10,7 +10,7 @@ double __channels[] = {8680E5};
 static byte my_seqnums[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
 addr neighbours[MAX_NEIGHBOURS] = {0};
-byte neighbours_size = 0;
+int neighbours_size = 0;
 
 QueueHandle_t received_queue;
 QueueHandle_t to_send_queue;
@@ -100,13 +100,13 @@ void sort_neighbours(){
     init_zero(_neighbour_seqnums, neighbours_size, sizeof(byte));
     init_zero(_neighbours, neighbours_size, sizeof(addr));
 
-     for (int i = 0; i < neighbours_size; i++){
+    for (int i = 0; i < neighbours_size; i++){
         _my_seqnums[i] = my_seqnums[temp[i]];
         _neighbour_seqnums[i] = neighbour_seqnums[temp[i]];
         _neighbours[i] = neighbours[temp[i]];
     }
     
-     for (int i = 0; i < neighbours_size; i++){
+    for (int i = 0; i < neighbours_size; i++){
         my_seqnums[i] = _my_seqnums[i];
         neighbour_seqnums[i] = _neighbour_seqnums[i];
         neighbours[i] = _neighbours[i];
@@ -152,13 +152,16 @@ void Receive(void* pvParameters){
 
         // if its not our neighbour, we add them to neighbours
         if (_memcmp(&result, &zero, sizeof(addr)) == 0 && neighbour.address != __my_address.address){
-            neighbours[neighbours_size % MAX_NEIGHBOURS] = neighbour;
-
             if (neighbours_size < MAX_NEIGHBOURS){
+                neighbours[neighbours_size].address = neighbour.address;
                 sort_neighbours();
                 neighbours_size += 1;
             }
             add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
+        }
+
+        if(uh.mac_d !=  LOCAL_BROADCAST){
+            __my_address.address = uh.mac_d;
         }
 
         // if its not for me or local broadcast, we drop the packet
@@ -166,8 +169,15 @@ void Receive(void* pvParameters){
             xSemaphoreGive(radio_mutex);
             continue;
         }
+
+        neighbours_size = 1;
+        if(uh.mac_s == 1){
+            neighbours[0].address = 1;
+        } else if(uh.mac_s == 2){
+            neighbours[0].address = 2;
+        }
         
-        if(__my_address.address == uh.mac_s){
+        if(__my_address.address != uh.mac_s && uh.mac_s != LOCAL_BROADCAST){
             //compare seqnum
             int i = 0;
             for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
@@ -191,7 +201,8 @@ void Receive(void* pvParameters){
         readBuffer(data, ph.length);
     
         p = packet_init(ph, data);
-        
+        print_packet(&p);
+
         xSemaphoreGive(radio_mutex);
         xQueueSend(received_queue, &p, portMAX_DELAY);
     }
@@ -211,7 +222,7 @@ void Transmit(void* pvParameters){
         
         unpacked_header uh = UNPACK_HEADER(p.h);
 
-        if(__my_address.address != uh.mac_s){
+       if(__my_address.address != uh.mac_s && uh.mac_s != LOCAL_BROADCAST){
             //increment seqnum;
             int i = 0;
             for (; neighbours[i].address != uh.mac_d && i < neighbours_size; i++){}
@@ -242,7 +253,6 @@ void Transmit(void* pvParameters){
         }
 
         xSemaphoreGive(radio_mutex);
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
