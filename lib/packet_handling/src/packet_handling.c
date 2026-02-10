@@ -6,7 +6,7 @@
 
 static int hw_flags = 0;
 
-double __channels[] = {8680E5};
+double __channels[] = {4300E5};
 static byte my_seqnums[MAX_NEIGHBOURS] = {0};
 static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
 addr neighbours[MAX_NEIGHBOURS] = {0};
@@ -160,23 +160,12 @@ void Receive(void* pvParameters){
             add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
         }
 
-        if(uh.mac_d !=  LOCAL_BROADCAST){
-            __my_address.address = uh.mac_d;
-        }
-
         // if its not for me or local broadcast, we drop the packet
         if (uh.mac_d != LOCAL_BROADCAST || uh.mac_d != __my_address.address){
             xSemaphoreGive(radio_mutex);
             continue;
         }
 
-        neighbours_size = 1;
-        if(uh.mac_s == 1){
-            neighbours[0].address = 1;
-        } else if(uh.mac_s == 2){
-            neighbours[0].address = 2;
-        }
-        
         if(__my_address.address != uh.mac_s && uh.mac_s != LOCAL_BROADCAST){
             //compare seqnum
             int i = 0;
@@ -201,7 +190,6 @@ void Receive(void* pvParameters){
         readBuffer(data, ph.length);
     
         p = packet_init(ph, data);
-        print_packet(&p);
 
         xSemaphoreGive(radio_mutex);
         xQueueSend(received_queue, &p, portMAX_DELAY);

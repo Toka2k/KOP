@@ -108,8 +108,14 @@ int radio_init(double freq, byte power, byte ramptime, byte sf, byte bw, byte cr
     setPacketTypeLora();
     setRfFrequency(freq);
     setStandby(STDBY_XOSC);
+
+    clearDeviceErrors();
+
     delay(1);
     calibrateImage();
+
+    setPaConfig();
+    setTxParams(power, ramptime);
 
     setBufferBaseAddress();
     setModulationParams(current_settings.sf, current_settings.bw, current_settings.cr);
@@ -117,10 +123,8 @@ int radio_init(double freq, byte power, byte ramptime, byte sf, byte bw, byte cr
     
     clearIrqStatus(0xFFFF);
 
-    setDioIrqParams(irq_map, irq_map/*IRQ_TX_DONE | IRQ_RX_DONE | IRQ_CAD_DONE | IRQ_TIMEOUT*/);
+    setDioIrqParams(irq_map, IRQ_TX_DONE | IRQ_RX_DONE | IRQ_CAD_DONE | IRQ_TIMEOUT);
     writeRegister(sync_word, 2, 0x740);
-
-    setRx(320, 5);
 
     xSemaphoreGive(radio_mutex);
 

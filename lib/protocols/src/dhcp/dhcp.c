@@ -123,7 +123,7 @@ int DHCP_FIN(packet* p){
 }
 
 int DHCP_ACC(packed_header ph){
-    //clear_table();
+    clear_table();
 
     add_unit(initialize_unit(__my_address.address, 0, __my_address.address));
 
