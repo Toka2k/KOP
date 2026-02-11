@@ -11,14 +11,12 @@ void setup() {
     Serial.begin(115200);
     delay(500);
 
-    radio_init(435000000.0, 0x16, 0x4, 0x7, 0x4, 0x1);
-
-    //xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 3, NULL, 1);
-    //delay(1);
-    //xTaskCreatePinnedToCore(Receive, "Receive task", 2048, NULL, 3, NULL, 1);
-    //xTaskCreatePinnedToCore(radio_loop, "Radio Loop task", 2048, (void*) Receive, 2, NULL, 1);
-    //xTaskCreatePinnedToCore(process_packet, "Packet processing task", 2048, NULL, 2, NULL, 0);
-
+    xTaskCreatePinnedToCore(Transmit, "Transmit task", 2048, NULL, 3, NULL, 1);
+    delay(1);
+    xTaskCreatePinnedToCore(Receive, "Receive task", 2048, NULL, 3, NULL, 1);
+    xTaskCreatePinnedToCore(radio_loop, "Radio Loop task", 2048, (void*) Receive, 2, NULL, 1);
+    xTaskCreatePinnedToCore(process_packet, "Packet processing task", 2048, NULL, 2, NULL, 0);
+    xTaskCreatePinnedToCore(i2c_rx_task, "i2c_rx", 4096, NULL, 10, NULL, 1);
     delay(100);
 }
 
