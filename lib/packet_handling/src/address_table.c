@@ -68,9 +68,9 @@ int remove_unit(unit remove){
     }
     
     i = 0;
-    if (FLAGS.REMOVE_WITH_ADDRESS){
+    if (FLAGS.REMOVE_WITH_NEXTHOP == 0 && FLAGS.REMOVE_WITH_ADDRESS){
         for(; (__table[i].haddress << 8 | __table[i].laddress) != (remove.haddress << 8 | remove.laddress) && i < tSize; i++){}
-    } else if (FLAGS.REMOVE_WITH_NEXTHOP){
+    } else if (FLAGS.REMOVE_WITH_NEXTHOP && FLAGS.REMOVE_WITH_ADDRESS == 0){
         for(; (__table[i].hnextHop << 8 | __table[i].lnextHop) != (remove.hnextHop << 8 | remove.lnextHop) && i < tSize; i++){}
     } else if (FLAGS.REMOVE_WITH_NEXTHOP && FLAGS.REMOVE_WITH_ADDRESS){
         for(;   (__table[i].hnextHop << 8 | __table[i].lnextHop) != (remove.hnextHop << 8 | remove.lnextHop) &&\
