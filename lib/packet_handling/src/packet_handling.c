@@ -157,7 +157,10 @@ void Receive(void* pvParameters){
                 sort_neighbours();
                 neighbours_size += 1;
             }
-            add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
+            unit res = find_unit((addr){uh.mac_s});
+            if (_memcmp(&res, &null, sizeof(unit)) == 0){
+                add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
+            }
         }
 
         // if its not for me or local broadcast, we drop the packet

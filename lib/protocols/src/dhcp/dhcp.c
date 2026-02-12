@@ -117,7 +117,7 @@ int DHCP_FIN(packet* p){
     *p = packet_init(send, _data);
 
     xQueueSend(to_send_queue, p, portMAX_DELAY);
-    xTaskCreatePinnedTocore(DHCP_LEASE_TASK, "dhcp lease task", 1028, (void*) &p->h, 2, dhcp_lease_task, 0);
+    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1028, (void*) &p->h, 2, dhcp_lease_task, 0);
 
     off_random = 0;
 
@@ -139,7 +139,7 @@ void DHCP_LEASE_TASK(void* pvParameters){
 int DHCP_ACC(packed_header ph){
     clear_table();
 
-    xTaskCreatePinnedTocore(DHCP_LEASE_TASK, "dhcp lease task", 1028, (void*) &ph, 2, dhcp_lease_task, 0);
+    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1028, (void*) &ph, 2, dhcp_lease_task, 0);
 
     add_unit(initialize_unit(__my_address.address, 0, __my_address.address));
 
