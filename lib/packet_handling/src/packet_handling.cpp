@@ -122,12 +122,15 @@ void Receive(void* pvParameters){
         xQueueReceive(received_queue, &p, portMAX_DELAY);
         xSemaphoreTake(radio_mutex, portMAX_DELAY);
 
-        for (int i = 0; i < p.h.length + HEADER_SIZE; i++){
-            Serial.printf("0x%02X ", ((byte*)&p)[i]);
+        unpacked_header uh = UNPACK_HEADER(p.h);
+
+        Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
+        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%04X ", uh.length, uh.protocol_id, p.h.hmac); 
+        for (int i = 0; i < p.h.length; i++){
+            Serial.printf("0x%02X ", p.data[i]);
         }
         Serial.println();
 
-        unpacked_header uh = UNPACK_HEADER(p.h);
 
         //compare hmac
         if (((p.h.hmac[0] << 8) + p.h.hmac[1]) != HASH_PH(p.h)){
@@ -193,13 +196,16 @@ void Transmit(void* pvParameters){
 
         xQueueReceive(to_send_queue, &p, portMAX_DELAY);
         xSemaphoreTake(radio_mutex, portMAX_DELAY);
+
+        unpacked_header uh = UNPACK_HEADER(p.h);
         
-        for (int i = 0; i < p.h.length + HEADER_SIZE; i++){
-            Serial.printf("0x%02X ", ((byte*)&p)[i]);
+        Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
+        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%04X ", uh.length, uh.protocol_id, p.h.hmac); 
+        for (int i = 0; i < p.h.length; i++){
+            Serial.printf("0x%02X ", p.data[i]);
         }
         Serial.println();
 
-        unpacked_header uh = UNPACK_HEADER(p.h);
 
        /*if(__my_address.address != uh.mac_d && uh.mac_d != LOCAL_BROADCAST){
             //increment seqnum;

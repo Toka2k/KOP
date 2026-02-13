@@ -10,8 +10,11 @@ void setup() {
     radio_init();
 
     __my_address.address = 1;
-    unit my_address = initialize_unit(1,0,1);
-    add_unit(my_address);
+    unit test = initialize_unit(0,0,0);
+    for(int i = 1; i < 250; i++){
+        test = initialize_unit(i,0,i);
+        add_unit(test);
+    }
     pinMode(2, OUTPUT);
     
     Serial.begin(115200);
@@ -27,6 +30,7 @@ void setup() {
 }
 
 void loop() {
+    delay(1000);
     for(int i = 0; i < tSize; i++){
         Serial.printf("%d ", __table[i].haddress << 8 | __table[i].laddress);
     }

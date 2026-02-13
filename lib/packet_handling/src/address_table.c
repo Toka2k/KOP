@@ -20,7 +20,7 @@ void init_address_table(){
 }
 
 int cmp_unit(const void* a, const void* b){
-    return ((*(unit*)a).haddress | (*(unit*)a).laddress) - ((*(unit*)b).haddress | (*(unit*)b).laddress);
+    return ((*(unit*)a).haddress << 8 | (*(unit*)a).laddress) - ((*(unit*)b).haddress << 8 | (*(unit*)b).laddress);
 }
 
 int check(unit check){
@@ -61,10 +61,10 @@ int add_unit(unit add){
     for(; (add.haddress << 8 | add.laddress) != (__table[i].haddress << 8 | __table[i].laddress) && _memcmp(&__table[i], &add, sizeof(unit)) && i < tSize; i++){}
     if (i == tSize && check(add) == 0){
         __table[tSize++] = add;
-        qsort(__table, tSize, sizeof(unit), cmp_unit);
     } else if (FLAGS.UPDATE_WHEN_ADD && i < tSize && (add.haddress << 8 | add.laddress) == (__table[i].haddress << 8 | __table[i].laddress)){
         __table[i] = add;
     }
+    qsort(__table, tSize, sizeof(unit), cmp_unit);
     return tSize;
 }
 

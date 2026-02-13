@@ -1,6 +1,7 @@
 #include <dhcp/dhcp.h>
 #include <packet_handling.h>
 #include <address_table.h>
+#include <Arduino.h>
 
 static int req_random = 0;
 static int off_random = 0;
