@@ -1,6 +1,5 @@
 #include <db/db.h>
 #include <address_table.h>
-#include <driver-al.h>
 #include <packet_handling.h>
 
 byte state = IDLE;
@@ -78,7 +77,7 @@ int db_download_all_loop(packet* p){
 
 int db_download_part_request(addr address){
     // We inform the sender how many corrupt packets we received
-    byte _payload[3] = {DOWNLOAD_REQ_CORRUPTED, corrupted_total >> 8, corrupted_total};
+    byte _payload[3] = {DOWNLOAD_REQ_CORRUPTED, (corrupted_total & 0xff00) >> 8, corrupted_total & 0xff};
     route(address, 3, P_DB, _payload);
 
     // we send the corrupted packet ids

@@ -10,14 +10,17 @@
 extern "C" {
 #endif
 
-extern int (*protocols[256])(packet* p);
+extern int (*protocols[PROTOCOLS])(packet* p);
 
 extern addr neighbours[MAX_NEIGHBOURS];
 extern int neighbours_size;
 
-extern SemaphoreHandle_t radio_mutex;
+extern xSemaphoreHandle rxDoneSemaphore;
+extern xSemaphoreHandle txDoneSemaphore;
 
-extern QueueHandle_t received_queue;
+extern xSemaphoreHandle radio_mutex;
+
+extern QueueHandle_t to_process_queue;
 extern QueueHandle_t to_send_queue;
 
 int get_hw_flags();
@@ -35,5 +38,4 @@ int route(addr dest, byte length, byte protocol_id, byte* data);
 #ifdef __cplusplus
 }
 #endif
-
 #endif

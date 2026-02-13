@@ -1,16 +1,23 @@
 #include <address_table.h>
+#include <string.h>
 
 //defining important variables and lists
 unit null = {0};
-unit __table[MAX_TABLE_SIZE] = {0};
+unit* __table;
 flags FLAGS = {0};
 size __table_size = {0};
 static addr __reserved_addresses[] = {0, 0x3fff};
-int routers[1 << (ADDRESS_BITS - 5)] = {0};
+int* routers;
 
 // MANAGE HIGHEST ADDRESS WITH DHCP
-addr __highest_address = {1};
 addr __my_address = {0};
+
+void init_address_table(){
+    __table = malloc(sizeof(unit) * MAX_TABLE_SIZE);
+    routers = malloc(sizeof(int) * (1 << (ADDRESS_BITS - 5)));
+    memset(__table, 0, sizeof(unit) * MAX_TABLE_SIZE);
+    memset(routers, 0, sizeof(int) * (1 << (ADDRESS_BITS - 5)));
+}
 
 int cmp_unit(const void* a, const void* b){
     return ((*(unit*)a).haddress | (*(unit*)a).laddress) - ((*(unit*)b).haddress | (*(unit*)b).laddress);

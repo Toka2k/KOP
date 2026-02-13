@@ -13,11 +13,12 @@ extern "C"{
 extern unit null;
 extern flags FLAGS;
 extern size __table_size;
-extern unit __table[MAX_TABLE_SIZE];
+extern unit* __table;
 extern addr __highest_address;
 extern addr __my_address;
-extern int routers[1 << (ADDRESS_BITS - 5)];
+extern int* routers;
 
+void init_address_table();
 int check(unit check);
 int _memcmp(const void* buf1, const void* buf2, int count);
 int add_unit(unit add);

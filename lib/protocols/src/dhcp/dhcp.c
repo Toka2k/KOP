@@ -6,20 +6,29 @@ static int req_random = 0;
 static int off_random = 0;
 TaskHandle_t* dhcp_lease_task = NULL;
 
-short int get_unused_address(short int address){
-    addr a = {address};
-    unit result = find_unit(a);
-    if(_memcmp(&result, &null, sizeof(unit)) == 0){
-        return address;
-    } 
+void DHCP_LEASE_TASK(void* pvParameters){
+    addr dhcp_leased = *(addr*)pvParameters;
 
-    for(short int i = __highest_address.address; i < MAX_TABLE_SIZE; i++){
-        __highest_address.address = i;
-        result = find_unit(__highest_address);
+    vTaskDelay(pdMS_TO_TICKS(30000));
+    FLAGS.REMOVE_WITH_ADDRESS = 1;
+    remove_unit(initialize_unit(dhcp_leased.address, 0, dhcp_leased.address));
+    if(__my_address.address == dhcp_leased.address){
+        __my_address.address = 0;
+    }
+    vTaskDelete(NULL);
+}
+
+short int get_unused_address(){
+    addr a = {0};
+    unit result;
+    for(short int i = 1; i < MAX_TABLE_SIZE; i++){
+        a.address = i;
+        result = find_unit(a);
         if(_memcmp(&result, &null, sizeof(unit)) == 0){
-            return __highest_address.address;
+            return a.address;
         }
     }
+    return 0;
 }
 
 int DHCP_REQ(){
@@ -35,7 +44,7 @@ int DHCP_REQ(){
 }
 
 int DHCP_OFFER(byte* data){
-    short int a = get_unused_address(__highest_address.address);
+    short int a = get_unused_address();
     // PING THE ADDRESS, if we get response, we choose different address
 
     unpacked_header uh = {~0, __my_address.address, ~0, __my_address.address, 0};
@@ -43,7 +52,7 @@ int DHCP_OFFER(byte* data){
     
     ph.length = 4;
     ph.protocol_id = P_DHCP;
-    byte* payload = malloc(ph.length);
+    byte* payload = (byte*)malloc(ph.length);
 
     if (payload == NULL){
         return NULL_POINTER;
@@ -117,29 +126,17 @@ int DHCP_FIN(packet* p){
     *p = packet_init(send, _data);
 
     xQueueSend(to_send_queue, p, portMAX_DELAY);
-    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1028, (void*) &p->h, 2, dhcp_lease_task, 0);
+    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1024, (void*) &leased_address, 2, dhcp_lease_task, 0);
 
     off_random = 0;
 
     return SUCCESS;
 }
 
-void DHCP_LEASE_TASK(void* pvParameters){
-    unpacked_header uh = UNPACK_HEADER(*(packed_header*)pvParameters);
-    addr dhcp_leased = {uh.mac_s};
-
-    vTaskDelay(pdMS_TO_TICKS(30000));
-    FLAGS.REMOVE_WITH_ADDRESS = 1;
-    remove_unit(initialize_unit(dhcp_leased.address, 0, dhcp_leased.address));
-    if(__my_address.address == dhcp_leased.address){
-        __my_address.address = 0;
-    }
-}
-
-int DHCP_ACC(packed_header ph){
+int DHCP_ACC(){
     clear_table();
 
-    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1028, (void*) &ph, 2, dhcp_lease_task, 0);
+    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1024, (void*) &__my_address, 2, dhcp_lease_task, 0);
 
     add_unit(initialize_unit(__my_address.address, 0, __my_address.address));
 
@@ -207,7 +204,7 @@ int DHCP(packet* p){
     } else if (*(p->data + 1) == 2){
         return DHCP_FIN(p);
     } else if (*(p->data + 1) == 3){
-        return DHCP_ACC(p->h);
+        return DHCP_ACC();
     } else if (*(p->data + 1) == 4){
         return DHCP_DROP();
     }

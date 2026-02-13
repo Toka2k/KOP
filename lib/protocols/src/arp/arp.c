@@ -1,5 +1,6 @@
 #include <arp/arp.h>
 #include <address_table.h>
+#include <driver-al.h>
 #include <packet_handling.h>
 
 
@@ -10,6 +11,10 @@ int ECHO_REQ(addr address){
     byte data[1] = {0};
 
     packet p = packet_init(ph, data);
+    unsigned short hmac = HASH_PH(p.h);
+    p.h.hmac[0] = (hmac & 0xff00) >> 8;
+    p.h.hmac[1] = hmac & 0xff;
+
     xQueueSend(to_send_queue, &p, portMAX_DELAY);
     return SUCCESS; 
 }
@@ -33,7 +38,7 @@ int ARP(packet* p){
         return INVALID_LENGTH;
     }
     if(p->data[0] == 0){
-        ECHO_REPLY(p);
+        return ECHO_REPLY(p);
     } else {
         return INVALID_PAYLOAD;
     }
