@@ -204,7 +204,7 @@ void Transmit(void* pvParameters){
         for (int i = 0; i < p.h.length; i++){
             Serial.printf("0x%02X ", p.data[i]);
         }
-        Serial.println();
+        Serial.println("TRANSMITED");
 
 
        /*if(__my_address.address != uh.mac_d && uh.mac_d != LOCAL_BROADCAST){
@@ -227,9 +227,10 @@ void Transmit(void* pvParameters){
         p.h.hmac[0] = (hmac & 0xff00) >> 8;
         p.h.hmac[1] = hmac & 0xff;
 
-        radio_transmit(&p);
+        Serial.printf("Radio transmit: %d\n", radio_transmit(&p));
 
         xSemaphoreGive(radio_mutex);
+        vTaskDelay(10);
     }
 }
 
@@ -254,10 +255,10 @@ void process_packet(void* pvParameters){
         
         if (next_hop != __my_address.address && (next_hop != 0)){
             send_uh.mac_s = __my_address.address;
-            send_uh.mac_d = (node.hnextHop << 8 | node.lnextHop);
+            send_uh.mac_d = next_hop;
 
             packed_header send_ph = PACK_HEADER(send_uh);
-            p = packet_init(p.h, p.data);
+            p = packet_init(send_ph, p.data);
 
             xQueueSend(to_send_queue, &p, portMAX_DELAY);
             hw_flags &= SUCCESS;
@@ -322,12 +323,12 @@ int route(addr dest, byte length, byte protocol_id, byte* data){
     unpacked_header uh = {0, __my_address.address, dest.address, __my_address.address, length, protocol_id, 0};
 
     unit nextHop = find_unit(dest);
-    if (_memcmp(&nextHop, &null, sizeof(unit))){
+    if (_memcmp(&nextHop, &null, sizeof(unit)) == 0){
         hw_flags |= INVALID_ADDRESS;
         return hw_flags;
     }
 
-    uh.mac_d = (nextHop.hnextHop << 8 | nextHop.lnextHop); 
+    uh.mac_d = (nextHop.hnextHop << 8 | nextHop.lnextHop);
     packed_header ph = PACK_HEADER(uh);
     
     packet p = packet_init(ph, data);

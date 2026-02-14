@@ -5,7 +5,8 @@
 
 static int req_random = 0;
 static int off_random = 0;
-TaskHandle_t* dhcp_lease_task = NULL;
+
+int DHCP_DENY();
 
 void DHCP_LEASE_TASK(void* pvParameters){
     addr dhcp_leased = *(addr*)pvParameters;
@@ -114,11 +115,13 @@ int DHCP_FIN(packet* p){
     // add to DB
     addr* leased_address = (addr*)malloc(sizeof(addr));
     leased_address->address = received_ack.mac_s;
-    add_unit(initialize_unit(leased_address->address, 1, leased_address->address));
     if (HASH_PH(p->h) != ((p->h.hmac[0] << 8) + p->h.hmac[1])){
         routers[leased_address->address / 8] |= 1 << (leased_address->address % 8);
-    } else {
-        routers[leased_address->address / 8] &= ~(1 << (leased_address->address % 8));
+        if (HASH_PH(p->h) != ((p->h.hmac[0] << 8) + p->h.hmac[1])){
+            routers[leased_address->address / 8] &= ~(1 << (leased_address->address % 8));
+            return DHCP_DENY();
+        }
+        add_unit(initialize_unit(leased_address->address, 1, leased_address->address));
     }
 
     send_fin.length = 2;
@@ -130,7 +133,7 @@ int DHCP_FIN(packet* p){
     *p = packet_init(send, _data);
 
     xQueueSend(to_send_queue, p, portMAX_DELAY);
-    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1024, (void*) leased_address, 2, dhcp_lease_task, 0);
+    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1024, (void*) leased_address, 2, NULL, 0);
 
     off_random = 0;
 
@@ -142,7 +145,7 @@ int DHCP_ACC(){
     addr* a = (addr*)malloc(sizeof(addr));
     a->address = __my_address.address;
 
-    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1024, (void*) a, 2, dhcp_lease_task, 0);
+    xTaskCreatePinnedToCore(DHCP_LEASE_TASK, "dhcp lease task", 1024, (void*) a, 2, NULL, 0);
 
     add_unit(initialize_unit(__my_address.address, 0, __my_address.address));
 
