@@ -4,6 +4,7 @@
 #include <driver-al.h>
 #include <WiFi.h>
 #include <esp_now.h>
+#include <esp_wifi.h>
 
 xSemaphoreHandle rxDoneSemaphore;
 xSemaphoreHandle txDoneSemaphore;
@@ -47,6 +48,7 @@ int radio_transmit(packet* p){
     if (result == ESP_OK) {
         return SUCCESS;
     } else {
+        Serial.printf("Transmit error: %d\n", result);
         return ERROR;
     }
 }
@@ -55,13 +57,18 @@ int radio_init(){
     init_address_table();
 
     WiFi.mode(WIFI_STA);
+    delay(100);
+
     if (esp_now_init() != ESP_OK) {
         Serial.println("Error initializing ESP-NOW");
         return ERROR;
     }
 
+    esp_wifi_set_channel(6, WIFI_SECOND_CHAN_NONE);
+
+    memset(&peerInfo, 0, sizeof(peerInfo));
     memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-    peerInfo.channel = 0;  
+    peerInfo.channel = 0;
     peerInfo.encrypt = false;
 
     if (esp_now_add_peer(&peerInfo) != ESP_OK){
@@ -81,6 +88,12 @@ int radio_init(){
     received_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
     to_process_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
     to_send_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
-
+    
+    uint8_t primary;
+    wifi_second_chan_t second;
+    esp_wifi_get_channel(&primary, &second);
+    Serial.print("HOME CHANNEL = ");
+    Serial.println(primary);
+    
     return SUCCESS;
 }

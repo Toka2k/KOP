@@ -227,7 +227,7 @@ void Transmit(void* pvParameters){
         p.h.hmac[0] = (hmac & 0xff00) >> 8;
         p.h.hmac[1] = hmac & 0xff;
 
-        Serial.printf("Radio transmit: %d\n", radio_transmit(&p));
+        radio_transmit(&p);
 
         xSemaphoreGive(radio_mutex);
         vTaskDelay(10);
