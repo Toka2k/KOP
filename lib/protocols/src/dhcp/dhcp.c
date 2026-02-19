@@ -196,6 +196,10 @@ int DHCP(packet* p){
     }
 
     // We are proccessing one request or we are not processing anything.
+    // NOT CORRECT
+    // NEED TO REWORK
+    // SEND OFFRANDOM in offer instead of req_radnom
+    // dont send req random in request
     if (req_random && req_random != *p->data){
         return ERROR;
     }

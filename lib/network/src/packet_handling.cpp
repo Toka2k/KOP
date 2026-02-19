@@ -1,14 +1,14 @@
 #include <packet_handling.h>
-
+#include <updates.h>
 #include <address_table.h>
 #include <driver-al.h>
 
 static int hw_flags = 0;
 
-static byte my_seqnums[MAX_NEIGHBOURS] = {0};
-static byte neighbour_seqnums[MAX_NEIGHBOURS] = {0};
-addr neighbours[MAX_NEIGHBOURS] = {0};
-int neighbours_size = 0;
+byte* my_seqnum, * neighbour_seqnum;
+
+addr* neighbours;
+unsigned short neighbours_size = 0;
 
 // First set of magic numbers, is for hosts
 // Second set of magic numbers, is for routers
@@ -49,64 +49,90 @@ unsigned short HASH_UH(unpacked_header uh){
     return hash;
 }
 
+int payload_hash(byte* data, byte length){
+    int h = 0;
+    for (int i = 0; i < length; i++){
+        h = (h + (int)data[i]) * 47;
+    }
+    return h;
+}
+
 int get_hw_flags(){
     return hw_flags;
 }
 
-int cmp_addr(const void* a, const void* b){
-    return ((*(addr*)a).address - (*(addr*)b).address);
-}
-
-int cmp_index(const void *a, const void *b){
-    return neighbours[*(const int *)a].address - neighbours[*(const int *)b].address;
-}
-
-addr find_addr(addr address){
-    int low = 0, high = neighbours_size - 1;
-
-    while (low <= high) {
-        int mid = (low + high) / 2;
-        if (neighbours[mid].address == address.address)
-            return neighbours[mid];
-        else if (neighbours[mid].address < address.address){
-            low = mid + 1;
+unsigned short find_neighbour(addr neighbour){
+    for(unsigned short i = 0; i < neighbours_size; i++){
+        if(neighbour.address == neighbours[i].address){
+            return i;
         }
-        else{
-            high = mid - 1;
-        }
-    }
+    }    
 
-    return (addr){0};
+    return neighbours_size;
 }
 
-void sort_neighbours(){
-    int* temp = (int*)malloc(neighbours_size * sizeof(int));
-    for (int i = 0; i < neighbours_size; i++){
-        temp[i] = i;
+void add_neighbour(addr neighbour){
+    unsigned short index = find_neighbour(neighbour);
+    if (index == neighbours_size){
+        neighbours = (addr*)realloc(neighbours, sizeof(addr) * ++neighbours_size);
+        neighbours[neighbours_size - 1] = neighbour;
+        missed_msg = (byte*)realloc(missed_msg, sizeof(byte) * neighbours_size);
+        missed_msg[neighbours_size - 1] = 0;
+        my_seqnum = (byte*)realloc(my_seqnum, sizeof(byte) * neighbours_size);
+        my_seqnum[neighbours_size - 1] = 0;
+        neighbour_seqnum = (byte*)realloc(neighbour_seqnum, sizeof(byte) * neighbours_size);
+        neighbour_seqnum[neighbours_size - 1] = 0;
     }
+}
 
-    qsort(temp, neighbours_size, sizeof(int), cmp_index);
+void remove_neighbour(addr neighbour){
+    unsigned short i = find_neighbour(neighbour);
+    if(i == neighbours_size){ return; }
 
-    byte* _my_seqnums = (byte*)malloc(neighbours_size * sizeof(byte));
-    byte* _neighbour_seqnums = (byte*)malloc(neighbours_size * sizeof(byte));
-    addr* _neighbours = (addr*)malloc(neighbours_size * sizeof(addr));
+    neighbour_seqnum[i] = neighbour_seqnum[neighbours_size - 1];
+    my_seqnum[i] = neighbour_seqnum[neighbours_size - 1];
+    neighbours[i] = neighbours[neighbours_size - 1];
+    missed_msg[i] = missed_msg[neighbours_size - 1];
+    neighbours = (addr*)realloc(neighbours, sizeof(addr) * --neighbours_size);
+    missed_msg = (byte*)realloc(missed_msg, sizeof(byte) * neighbours_size);
+    neighbour_seqnum = (byte*)realloc(neighbour_seqnum, sizeof(byte) * neighbours_size);
+    my_seqnum = (byte*)realloc(my_seqnum, sizeof(byte) * neighbours_size);
+}
 
-    init_zero(_my_seqnums, neighbours_size, sizeof(byte));
-    init_zero(_neighbour_seqnums, neighbours_size, sizeof(byte));
-    init_zero(_neighbours, neighbours_size, sizeof(addr));
+byte track_seqnums(packed_header ph){
+    // for demo purposes dont update the cost and nexthop when receiving
+    unpacked_header uh = UNPACK_HEADER(ph);
+    unsigned short i;
+    addr address;
+    if(__my_address.address == uh.mac_s){
+        if(uh.mac_d == LOCAL_BROADCAST || uh.mac_d == 0){
+            return 0;
+        }
+        address.address = uh.mac_d;
 
-    for (int i = 0; i < neighbours_size; i++){
-        _my_seqnums[i] = my_seqnums[temp[i]];
-        _neighbour_seqnums[i] = neighbour_seqnums[temp[i]];
-        _neighbours[i] = neighbours[temp[i]];
+        i = find_neighbour(address);
+        if(i == neighbours_size){ add_neighbour(address); }
+        return ++my_seqnum[i];
+    } else if (__my_address.address == uh.mac_d){
+        if(uh.mac_s == LOCAL_BROADCAST || uh.mac_s == 0){
+            return INVALID_ADDRESS;
+        }
+        address.address = uh.mac_s;
+
+        i = find_neighbour(address);
+        if(i == neighbours_size){ add_neighbour(address); }
+
+        neighbour_seqnum[i]++;
+        mark_route_refreshed(address);
+
+        if (neighbour_seqnum[i] == ph.seqnum){
+            return SUCCESS;
+        } else {
+            remove_neighbour(address);
+            return INVALID_SEQNUM;
+        }
     }
-    
-    for (int i = 0; i < neighbours_size; i++){
-        my_seqnums[i] = _my_seqnums[i];
-        neighbour_seqnums[i] = _neighbour_seqnums[i];
-        neighbours[i] = _neighbours[i];
-    }
-    return;
+    return INVALID_SEQNUM;
 }
 
 //
@@ -131,29 +157,22 @@ void Receive(void* pvParameters){
         }
         Serial.println();
 
-
         //compare hmac
         if (((p.h.hmac[0] << 8) + p.h.hmac[1]) != HASH_PH(p.h)){
             hw_flags |= INVALID_HASH; 
             xSemaphoreGive(radio_mutex);
             continue;
         }
-        /*addr neighbour = {uh.mac_s};
-        addr result = find_addr(neighbour);
-        addr zero = {0};
-
-        // if its not our neighbour, we add them to neighbours
-        if (_memcmp(&result, &zero, sizeof(addr)) == 0 && neighbour.address != __my_address.address){
-            if (neighbours_size < MAX_NEIGHBOURS){
-                neighbours[neighbours_size].address = neighbour.address;
-                sort_neighbours();
-                neighbours_size += 1;
-            }
-            
-        }*/
+        
+        // tracks neighbours and their seqnums
+        if (track_seqnums(p.h) != SUCCESS){
+            xSemaphoreGive(radio_mutex);
+            continue;
+        }
         
         unit res = find_unit((addr){uh.mac_s});
-        if (_memcmp(&res, &null, sizeof(unit)) == 0){
+        if (_memcmp(&res, &null, sizeof(unit)) == 0 || UNIT_COST(res) == 0xfff){
+            FLAGS.UPDATE_WHEN_ADD = 1;
             add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
         }
 
@@ -162,26 +181,6 @@ void Receive(void* pvParameters){
             xSemaphoreGive(radio_mutex);
             continue;
         }
-
-        /*if(__my_address.address != uh.mac_s && uh.mac_s != LOCAL_BROADCAST){
-            //compare seqnum
-            int i = 0;
-            for (; neighbours[i].address != uh.mac_s && i < neighbours_size; i++){}
-            if (i == neighbours_size){
-                hw_flags |= NOT_NEIGHBOUR;
-                xSemaphoreGive(radio_mutex);
-                continue; 
-            }
-
-            // We track seqnums of neighbours
-            if (neighbour_seqnums[i] == p.h.seqnum){
-                neighbour_seqnums[i]++;
-            } else {
-                hw_flags |= INVALID_SEQNUM;
-                xSemaphoreGive(radio_mutex);
-                continue;
-            }
-        }*/
 
         xSemaphoreGive(radio_mutex);
         xQueueSend(to_process_queue, &p, portMAX_DELAY);
@@ -206,21 +205,7 @@ void Transmit(void* pvParameters){
         }
         Serial.println("TRANSMITED");
 
-
-       /*if(__my_address.address != uh.mac_d && uh.mac_d != LOCAL_BROADCAST){
-            //increment seqnum;
-            int i = 0;
-            for (; neighbours[i].address != uh.mac_d && i < neighbours_size; i++){}
-            if (i == neighbours_size && LOCAL_BROADCAST != uh.mac_d){
-                hw_flags |= NOT_NEIGHBOUR;
-                xSemaphoreGive(radio_mutex);
-                vTaskDelay(pdMS_TO_TICKS(10));
-                continue;
-            }
-
-            my_seqnums[i]++;
-            p.h.seqnum = my_seqnums[i];
-        }*/
+        p.h.seqnum = track_seqnums(p.h);
 
         //calculate HMAC
         unsigned short hmac = HASH_PH(p.h);

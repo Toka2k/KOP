@@ -2,6 +2,7 @@
 #include <definitions.h>
 #include <address_table.h>
 #include <driver-al.h>
+#include <updates.h>
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
@@ -55,10 +56,9 @@ int radio_transmit(packet* p){
 
 int radio_init(){
     init_address_table();
+    init_updates();
 
     WiFi.mode(WIFI_STA);
-    delay(100);
-
     if (esp_now_init() != ESP_OK) {
         Serial.println("Error initializing ESP-NOW");
         return ERROR;

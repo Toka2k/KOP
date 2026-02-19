@@ -2,7 +2,7 @@
 #define ___DEFINITIONS___
 
 // PACKET FLAGS
-#define SUCCESS 0 
+#define SUCCESS (0) 
 #define ERROR (1)
 #define INVALID_HASH (1<<1)
 #define INVALID_SEQNUM (1<<2)
@@ -16,32 +16,37 @@
 #define PACKET_LAST (1<<10)
 
 // generic errors
-#define NULL_POINTER (-1); 
+#define NULL_POINTER (-1) 
+#define INVALID_INDEX (-2)
 
 // PROTOCOLS
-#define PROTOCOLS (256)
-#define P_NONE  (0x0)
-#define P_DB    (0x1)
-#define P_ARP   (0x2)
-#define P_DHCP  (0x3)
+#define PROTOCOLS   (256)
+#define P_UPDATE    (0x1)
+#define P_ARP       (0x2)
+#define P_DHCP      (0x3)
 
 // 1<<14 / num of units per packet
-#define MAX_ITERATIONS (357)
+#define MAX_ITERATIONS (283)
 
 // Reserved Addresses
+#define RESERVED_ADDRESSES (2) 
 #define LOCAL_BROADCAST (0x3fff)
 
 // Hardware
 #define MAX_STORED_PACKETS (16)
 #define PACKET_SIZE (250)
-#define MAX_NEIGHBOURS (256)
 #define HEADER_SIZE (sizeof(packed_header))
 #define PAYLOAD_SIZE (PACKET_SIZE - HEADER_SIZE)
 
-#define RESERVED_ADDRESSES 2 
-#define ADDRESS_BITS 14
+#define ADDRESS_BITS (14)
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
 #define TABLE_SIZE __table_size.size
+
+#define HOLD_DOWN_S (15)
+
+#define UNIT_COST(x) (x.hcost << 10 | x.cost << 2 | x.lcost)
+#define UNIT_NEXTHOP(x) (x.hnextHop << 8 | x.lnextHop)
+#define UNIT_ADDRESS(x) (x.haddress << 8 | x.laddress)
 
 #ifdef __cplusplus
 extern "C" {

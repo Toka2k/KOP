@@ -32,10 +32,6 @@ int check(unit check){
         }
     }
 
-    if ((check.hcost << 10 | check.cost << 2 | check.lcost) == (~0 & 0xfff)){
-        return -3;
-    }
-
     return SUCCESS;
 }
 
@@ -59,7 +55,7 @@ int add_unit(unit add){
     
     i = 0;
     for(; (add.haddress << 8 | add.laddress) != (__table[i].haddress << 8 | __table[i].laddress) && _memcmp(&__table[i], &add, sizeof(unit)) && i < tSize; i++){}
-    if (i == tSize && check(add) == 0){
+    if (i == tSize && check(add) == SUCCESS){
         __table[tSize++] = add;
     } else if (FLAGS.UPDATE_WHEN_ADD && i < tSize && (add.haddress << 8 | add.laddress) == (__table[i].haddress << 8 | __table[i].laddress)){
         __table[i] = add;
