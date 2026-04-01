@@ -46,6 +46,7 @@ void init_updates(){
     xTaskCreate(full_update_task, "FULL UPDATE TASK", 4096, NULL, 2, NULL);
     xTaskCreate(trigger_update_task, "TRIGGER UPDATE TASK", 4096, NULL, 2, NULL);
     xTaskCreate(hello, "HELLO MESSAGE TASK", 4096, NULL, 2, NULL);
+    xTaskCreate(cleanup_task, "CLEANUP TASK", 4096, NULL, 2, NULL);
 }
 
 int process_update(packet* p){
@@ -71,7 +72,7 @@ int process_update(packet* p){
         unsigned short j;
         for(j = 0; j < size_held_down && held_down[j].address != address.address; j++){}
         if (j < size_held_down){
-            if (held_down[j].timer - millis() < 1000 * HOLD_DOWN_S){
+            if (millis() - held_down[j].timer < 1000 * HOLD_DOWN_S){
                 continue;
             } else {
                 xSemaphoreTake(timers_semaphore, portMAX_DELAY);
@@ -136,7 +137,7 @@ void invalidate_routes(addr neighbour){
     }
 
     for (short i = 0; i < TABLE_SIZE; i++){
-        address.address = UNIT_ADDRESS(__table[i]);
+        address.address = UNIT_ADDRESS(__table[i]);        
 
         xSemaphoreTake(table_semaphore, portMAX_DELAY);
         if((__table[i].hnextHop << 8 | __table[i].lnextHop) == neighbour.address){
@@ -147,12 +148,23 @@ void invalidate_routes(addr neighbour){
             xSemaphoreTake(timers_semaphore, portMAX_DELAY);
             int temp = 1 + size_held_down;
 
-            void* tmp = realloc(held_down, sizeof(*held_down) * temp);
-            if (tmp != NULL) {
-                held_down = tmp;
-                held_down[temp - 1].address = address.address;
-                held_down[temp - 1].timer = millis();
-                size_held_down = temp;
+            int exists = 0;
+            for (int k = 0; k < size_held_down; k++) {
+                if (held_down[k].address == address.address) {
+                    exists = 1;
+                    break;
+                }
+            }
+
+            if (!exists) {
+                int temp = size_held_down + 1;
+                void* tmp = realloc(held_down, sizeof(*held_down) * temp);
+                if (tmp != NULL) {
+                    held_down = tmp;
+                    held_down[temp - 1].address = address.address;
+                    held_down[temp - 1].timer = millis();
+                    size_held_down = temp;
+                }
             }
             xSemaphoreGive(timers_semaphore);
 
@@ -444,5 +456,49 @@ void full_update_task(void* pvParameters){
             vTaskDelay(pdMS_TO_TICKS(random() % 150 + 50));
         }
         vTaskDelay(pdMS_TO_TICKS(20000));
+    }
+}
+
+void cleanup_task(void* pvParameters){
+    for(;;){
+        xSemaphoreTake(timers_semaphore, portMAX_DELAY);
+
+        for(int i = 0; i < size_held_down; ){
+            if (millis() - held_down[i].timer >= 2 * HOLD_DOWN_S * 1000){
+
+                addr a = {held_down[i].address};
+
+                unit u = find_unit(a);
+                int cost = UNIT_COST(u);
+
+                if (cost >= 0xFFF){
+                    remove_unit(u);
+                }
+
+                held_down[i] = held_down[size_held_down - 1];
+
+                if (size_held_down > 1){
+                    int new_size = size_held_down - 1;
+
+                    void* tmp = realloc(held_down, new_size * sizeof(*held_down));
+                    if (tmp != NULL){
+                        held_down = tmp;
+                    }
+                    size_held_down = new_size;
+                } else {
+                    free(held_down);
+                    held_down = NULL;
+                    size_held_down = 0;
+                }
+
+                continue;
+            }
+
+            i++;
+        }
+
+        xSemaphoreGive(timers_semaphore);
+
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
 }

@@ -27,6 +27,7 @@ void trigger_update_task(void* pvParameters);
 void full_update_task(void* pvParameters);
 void increment_neighbour_counter(void* pvParameters);
 void increment_counter(void* pvParameters);
+void cleanup_task(void* pvParameters);
 #ifdef __cplusplus
 }
 #endif
