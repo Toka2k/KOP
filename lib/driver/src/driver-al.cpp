@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <definitions.h>
 #include <address_table.h>
+#include <packet_handling.h>
 #include <driver-al.h>
 #include <updates.h>
 #include <WiFi.h>
@@ -15,10 +16,11 @@ xSemaphoreHandle radio_mutex;
 QueueHandle_t received_queue;
 QueueHandle_t to_process_queue;
 QueueHandle_t to_send_queue;
+QueueHandle_t sent_queue;
 
 esp_now_peer_info_t peerInfo;
 
-packet p;
+packet *p;
 
 byte broadcastAddress[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
 
@@ -30,21 +32,35 @@ void BlinkTask(void* pvParameters){
 }
 
 void onSent(const byte* mac_addr, esp_now_send_status_t status){
+    packet* sent;
+    
+    if (xQueueReceive(sent_queue, &sent, portMAX_DELAY)){
+        free(sent);
+    }
+
     xSemaphoreGive(txDoneSemaphore);
+
     return;
 }
 
 void onRecv(const byte* mac_addr, const byte* incomingData, int len) {
-    memcpy(&p, incomingData, len);
+    p = (packet*)malloc(sizeof(packet));
+    memcpy(p, incomingData, len);
     
     xSemaphoreGive(rxDoneSemaphore);
-    xQueueSend(received_queue, &p, portMAX_DELAY);
+    xQueueSend(received_queue, p, portMAX_DELAY);
+
+    free(p);
     
     return;
 }
 
 int radio_transmit(packet* p){
-    esp_err_t result = esp_now_send(broadcastAddress, (byte*)p, PACKET_SIZE);
+    packet *_p = (packet*)malloc(PACKET_SIZE);
+    memcpy(_p, p, PACKET_SIZE);
+
+    xQueueSend(sent_queue, &_p, portMAX_DELAY);
+    esp_err_t result = esp_now_send(broadcastAddress, (byte*)_p, PACKET_SIZE);
     
     if (result == ESP_OK) {
         return SUCCESS;
@@ -55,9 +71,6 @@ int radio_transmit(packet* p){
 }
 
 int radio_init(){
-    init_address_table();
-    init_updates();
-
     WiFi.mode(WIFI_STA);
     if (esp_now_init() != ESP_OK) {
         Serial.println("Error initializing ESP-NOW");
@@ -82,18 +95,13 @@ int radio_init(){
     rxDoneSemaphore = xSemaphoreCreateBinary();
     txDoneSemaphore = xSemaphoreCreateBinary();
     
-    radio_mutex = xSemaphoreCreateBinary();
-    xSemaphoreGive(radio_mutex);
+    sent_queue = xQueueCreate(MAX_STORED_PACKETS, sizeof(void*));
 
-    received_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
-    to_process_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
-    to_send_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
-    
     uint8_t primary;
     wifi_second_chan_t second;
     esp_wifi_get_channel(&primary, &second);
-    Serial.print("HOME CHANNEL = ");
-    Serial.println(primary);
+    //Serial.print("HOME CHANNEL = ");
+    //Serial.println(primary);
     
     return SUCCESS;
 }

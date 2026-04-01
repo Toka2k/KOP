@@ -78,6 +78,11 @@ typedef struct __attribute__((packed)){
     byte data[PAYLOAD_SIZE];
 } packet;
 
+typedef struct __attribute__((packed)){
+    unsigned short timer;
+    unsigned short address;
+} held_entry;
+
 enum Channels{
     DEFCHANNEL = 0
 };

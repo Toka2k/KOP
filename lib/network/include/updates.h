@@ -11,6 +11,7 @@ extern "C" {
 extern byte* missed_msg;
 
 extern xSemaphoreHandle trigger_update;
+extern xSemaphoreHandle neighbour_semaphore;
 
 void init_updates();
 void invalidate_routes(addr neighbour);
@@ -18,7 +19,7 @@ void mark_route_refreshed(addr dest);
 void get_changed_routes();
 
 int process_update(packet* p);
-unsigned short* get_routes_to_advertise(addr neighbour);
+unsigned short* get_routes_to_advertise(addr neighbour, byte* out_len);
 
 // TASKS:
 void hello(void* pvParameters);

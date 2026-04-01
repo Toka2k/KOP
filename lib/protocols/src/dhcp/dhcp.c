@@ -119,6 +119,7 @@ int DHCP_FIN(packet* p){
         routers[leased_address->address / 8] |= 1 << (leased_address->address % 8);
         if (HASH_PH(p->h) != ((p->h.hmac[0] << 8) + p->h.hmac[1])){
             routers[leased_address->address / 8] &= ~(1 << (leased_address->address % 8));
+            free(leased_address);
             return DHCP_DENY();
         }
         add_unit(initialize_unit(leased_address->address, 1, leased_address->address));
@@ -137,6 +138,7 @@ int DHCP_FIN(packet* p){
 
     off_random = 0;
 
+    free(leased_address);
     return SUCCESS;
 }
 
@@ -150,6 +152,7 @@ int DHCP_ACC(){
     add_unit(initialize_unit(__my_address.address, 0, __my_address.address));
 
     req_random = 0;
+    free(a);
 
     return SUCCESS;    
 }

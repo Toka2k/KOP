@@ -34,6 +34,7 @@ byte track_seqnums(packed_header ph);
 void Receive(void* pvParameters);
 void Transmit(void* pvParameters);
 void process_packet(void* pvParameters);
+void init_network();
 packet packet_init(packed_header ph, byte* payload);
 packed_header PACK_HEADER(unpacked_header uh);
 unpacked_header UNPACK_HEADER(packed_header ph);

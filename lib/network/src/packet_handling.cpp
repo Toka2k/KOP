@@ -62,76 +62,119 @@ int get_hw_flags(){
 }
 
 unsigned short find_neighbour(addr neighbour){
+    xSemaphoreTake(neighbour_semaphore, portMAX_DELAY);
     for(unsigned short i = 0; i < neighbours_size; i++){
         if(neighbour.address == neighbours[i].address){
+            xSemaphoreGive(neighbour_semaphore);
             return i;
         }
-    }    
+    }
 
+    xSemaphoreGive(neighbour_semaphore);
     return neighbours_size;
+}
+
+void resize_neighbour(){
+    void* tmp = (addr*)realloc(neighbours, sizeof(addr) * neighbours_size);
+    if (tmp != NULL){
+        neighbours = (addr*)tmp;
+    }
+
+    tmp = (byte*)realloc(my_seqnum, sizeof(byte) * neighbours_size);
+    if (tmp != NULL){
+        my_seqnum = (byte*)tmp;
+    }
+
+    tmp = (byte*)realloc(neighbour_seqnum, sizeof(byte) * neighbours_size);
+    if (tmp != NULL){
+        neighbour_seqnum = (byte*)tmp;
+    }
 }
 
 void add_neighbour(addr neighbour){
     unsigned short index = find_neighbour(neighbour);
-    if (index == neighbours_size){
-        neighbours = (addr*)realloc(neighbours, sizeof(addr) * ++neighbours_size);
+    xSemaphoreTake(neighbour_semaphore, portMAX_DELAY);
+    if ((index == neighbours_size || neighbours_size == 0) && neighbour.address != __my_address.address){
+        ++neighbours_size;
+        resize_neighbour();
+        
         neighbours[neighbours_size - 1] = neighbour;
-        missed_msg = (byte*)realloc(missed_msg, sizeof(byte) * neighbours_size);
-        missed_msg[neighbours_size - 1] = 0;
-        my_seqnum = (byte*)realloc(my_seqnum, sizeof(byte) * neighbours_size);
         my_seqnum[neighbours_size - 1] = 0;
-        neighbour_seqnum = (byte*)realloc(neighbour_seqnum, sizeof(byte) * neighbours_size);
         neighbour_seqnum[neighbours_size - 1] = 0;
     }
+    xSemaphoreGive(neighbour_semaphore);
 }
 
 void remove_neighbour(addr neighbour){
     unsigned short i = find_neighbour(neighbour);
-    if(i == neighbours_size){ return; }
+    xSemaphoreTake(neighbour_semaphore, portMAX_DELAY);
+    if(i == neighbours_size || neighbours_size == 0){
+        xSemaphoreGive(neighbour_semaphore);
+        return;
+    }
 
     neighbour_seqnum[i] = neighbour_seqnum[neighbours_size - 1];
-    my_seqnum[i] = neighbour_seqnum[neighbours_size - 1];
+    my_seqnum[i] = my_seqnum[neighbours_size - 1];
     neighbours[i] = neighbours[neighbours_size - 1];
-    missed_msg[i] = missed_msg[neighbours_size - 1];
-    neighbours = (addr*)realloc(neighbours, sizeof(addr) * --neighbours_size);
-    missed_msg = (byte*)realloc(missed_msg, sizeof(byte) * neighbours_size);
-    neighbour_seqnum = (byte*)realloc(neighbour_seqnum, sizeof(byte) * neighbours_size);
-    my_seqnum = (byte*)realloc(my_seqnum, sizeof(byte) * neighbours_size);
+
+    --neighbours_size;
+    if (neighbours_size == 0) { 
+        xSemaphoreGive(neighbour_semaphore);
+        return;
+    }
+
+    resize_neighbour();
+    xSemaphoreGive(neighbour_semaphore);
 }
 
 byte track_seqnums(packed_header ph){
-    // for demo purposes dont update the cost and nexthop when receiving
     unpacked_header uh = UNPACK_HEADER(ph);
     unsigned short i;
     addr address;
+    if(uh.mac_d == LOCAL_BROADCAST){
+        address.address = uh.mac_s;
+        add_neighbour(address);
+        return SUCCESS;
+    }
     if(__my_address.address == uh.mac_s){
         if(uh.mac_d == LOCAL_BROADCAST || uh.mac_d == 0){
-            return 0;
+            return SUCCESS;
         }
         address.address = uh.mac_d;
 
+        add_neighbour(address);
         i = find_neighbour(address);
-        if(i == neighbours_size){ add_neighbour(address); }
-        return ++my_seqnum[i];
+
+        xSemaphoreTake(neighbour_semaphore, portMAX_DELAY);
+        byte seq = ++my_seqnum[i];
+        xSemaphoreGive(neighbour_semaphore);
+        return seq;
     } else if (__my_address.address == uh.mac_d){
         if(uh.mac_s == LOCAL_BROADCAST || uh.mac_s == 0){
-            return INVALID_ADDRESS;
+            return SUCCESS;
         }
         address.address = uh.mac_s;
 
+        add_neighbour(address);
+
         i = find_neighbour(address);
-        if(i == neighbours_size){ add_neighbour(address); }
-
+        xSemaphoreTake(neighbour_semaphore, portMAX_DELAY);
         neighbour_seqnum[i]++;
-        mark_route_refreshed(address);
+        xSemaphoreGive(neighbour_semaphore);
 
+        mark_route_refreshed(address);
+        
+        xSemaphoreTake(neighbour_semaphore, portMAX_DELAY);
         if (neighbour_seqnum[i] == ph.seqnum){
+            xSemaphoreGive(neighbour_semaphore);
             return SUCCESS;
         } else {
+            xSemaphoreGive(neighbour_semaphore);
             remove_neighbour(address);
             return INVALID_SEQNUM;
         }
     }
+
     return INVALID_SEQNUM;
 }
 
@@ -150,12 +193,13 @@ void Receive(void* pvParameters){
 
         unpacked_header uh = UNPACK_HEADER(p.h);
 
+        Serial.println("\nRECEIVED");
         Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
-        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%04X ", uh.length, uh.protocol_id, p.h.hmac); 
+        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%02X\n", uh.length, uh.protocol_id, p.h.hmac[0] <<  8 | p.h.hmac[1]); 
         for (int i = 0; i < p.h.length; i++){
             Serial.printf("0x%02X ", p.data[i]);
         }
-        Serial.println();
+        Serial.println("\n==============");
 
         //compare hmac
         if (((p.h.hmac[0] << 8) + p.h.hmac[1]) != HASH_PH(p.h)){
@@ -171,9 +215,9 @@ void Receive(void* pvParameters){
         }
         
         unit res = find_unit((addr){uh.mac_s});
-        if (_memcmp(&res, &null, sizeof(unit)) == 0 || UNIT_COST(res) == 0xfff){
+        if (_memcmp(&res, &null, sizeof(unit)) == 0 || UNIT_COST(res) <= 0xfff){
             FLAGS.UPDATE_WHEN_ADD = 1;
-            add_unit(initialize_unit(uh.mac_s, 0, uh.mac_s));
+            add_unit(initialize_unit(uh.mac_s, 1, uh.mac_s));
         }
 
         // if its not for me or local broadcast, we drop the packet
@@ -198,12 +242,13 @@ void Transmit(void* pvParameters){
 
         unpacked_header uh = UNPACK_HEADER(p.h);
         
+        Serial.println("\nTRANSMITED");
         Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
-        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%04X ", uh.length, uh.protocol_id, p.h.hmac); 
+        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%02X\n", uh.length, uh.protocol_id, p.h.hmac[0] <<  8 | p.h.hmac[1]); 
         for (int i = 0; i < p.h.length; i++){
             Serial.printf("0x%02X ", p.data[i]);
         }
-        Serial.println("TRANSMITED");
+        Serial.println("\n==============");
 
         p.h.seqnum = track_seqnums(p.h);
 
@@ -259,6 +304,21 @@ void process_packet(void* pvParameters){
 //      End of CORE 2
 //
 
+void init_network(){
+    radio_mutex = xSemaphoreCreateBinary();
+    xSemaphoreGive(radio_mutex);
+
+    received_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
+    to_process_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
+    to_send_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
+
+    xTaskCreatePinnedToCore(Transmit, "Transmit task", 16384, NULL, 3, NULL, 1);
+    xTaskCreatePinnedToCore(Receive, "Receive task", 16384, NULL, 3, NULL, 1);
+    xTaskCreatePinnedToCore(process_packet, "Packet processing task", 16384, NULL, 2, NULL, 0);
+
+    return;
+}
+
 packet packet_init(packed_header ph, byte* _payload){
     packet p = {ph, 0};
 
@@ -308,12 +368,18 @@ int route(addr dest, byte length, byte protocol_id, byte* data){
     unpacked_header uh = {0, __my_address.address, dest.address, __my_address.address, length, protocol_id, 0};
 
     unit nextHop = find_unit(dest);
-    if (_memcmp(&nextHop, &null, sizeof(unit)) == 0){
+    if (_memcmp(&nextHop, &null, sizeof(unit)) == 0 && dest.address != LOCAL_BROADCAST){
         hw_flags |= INVALID_ADDRESS;
         return hw_flags;
     }
 
-    uh.mac_d = (nextHop.hnextHop << 8 | nextHop.lnextHop);
+    if(dest.address == LOCAL_BROADCAST){
+        uh.mac_d = LOCAL_BROADCAST;
+        uh.net_d = 0;
+    } else{
+        uh.mac_d = (nextHop.hnextHop << 8 | nextHop.lnextHop);
+    }
+    
     packed_header ph = PACK_HEADER(uh);
     
     packet p = packet_init(ph, data);

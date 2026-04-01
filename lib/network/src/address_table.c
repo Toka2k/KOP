@@ -6,8 +6,10 @@ unit null = {0};
 unit* __table;
 flags FLAGS = {0};
 size __table_size = {0};
-static addr __reserved_addresses[] = {0, 0x3fff};
+static addr __reserved_addresses[] = {0, LOCAL_BROADCAST};  
 int* routers;
+
+xSemaphoreHandle table_semaphore;
 
 // MANAGE HIGHEST ADDRESS WITH DHCP
 addr __my_address = {0};
@@ -17,18 +19,21 @@ void init_address_table(){
     routers = malloc(sizeof(int) * (1 << (ADDRESS_BITS - 5)));
     memset(__table, 0, sizeof(unit) * MAX_TABLE_SIZE);
     memset(routers, 0, sizeof(int) * (1 << (ADDRESS_BITS - 5)));
+
+    table_semaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(table_semaphore);
 }
 
 int cmp_unit(const void* a, const void* b){
     return ((*(unit*)a).haddress << 8 | (*(unit*)a).laddress) - ((*(unit*)b).haddress << 8 | (*(unit*)b).laddress);
 }
 
-int check(unit check){
+unsigned int check(unit check){
     for(int j = 0; j < RESERVED_ADDRESSES; j++){
         if ((check.haddress << 8 | check.laddress) == __reserved_addresses[j].address){
-            return -1;
+            return 1;
         } else if ((check.hnextHop << 8 | check.lnextHop) == __reserved_addresses[j].address){
-            return -2;
+            return 2;
         }
     }
 
@@ -53,6 +58,7 @@ int add_unit(unit add){
         return i;
     }
     
+    xSemaphoreTake(table_semaphore, portMAX_DELAY);
     i = 0;
     for(; (add.haddress << 8 | add.laddress) != (__table[i].haddress << 8 | __table[i].laddress) && _memcmp(&__table[i], &add, sizeof(unit)) && i < tSize; i++){}
     if (i == tSize && check(add) == SUCCESS){
@@ -61,6 +67,7 @@ int add_unit(unit add){
         __table[i] = add;
     }
     qsort(__table, tSize, sizeof(unit), cmp_unit);
+    xSemaphoreGive(table_semaphore);
     return tSize;
 }
 
@@ -69,6 +76,8 @@ int remove_unit(unit remove){
     if (i){
         return i;
     }
+
+    xSemaphoreTake(table_semaphore, portMAX_DELAY);
     
     i = 0;
     if (FLAGS.REMOVE_WITH_NEXTHOP == 0 && FLAGS.REMOVE_WITH_ADDRESS){
@@ -88,6 +97,7 @@ int remove_unit(unit remove){
         __table[tSize] = null; 
     }
     qsort(__table, tSize, sizeof(unit), cmp_unit);
+    xSemaphoreGive(table_semaphore);
 
     return tSize;
 }
@@ -97,9 +107,14 @@ int update_unit(unit update){
     if (i){
         return i;
     }
+
+    xSemaphoreTake(table_semaphore, portMAX_DELAY);
+
     i = 0;
     for(; (__table[i].haddress << 8 | __table[i].laddress) != (update.haddress << 8 | update.laddress); i++){}
     __table[i] = update;
+
+    xSemaphoreGive(table_semaphore);
 
     return tSize;
 }
@@ -114,6 +129,9 @@ void clear_table(){
 
 int add_units(int _size, unit* add){
     int i = 0, j = 0;
+    
+    xSemaphoreTake(table_semaphore, portMAX_DELAY);
+
     for(; i < _size; i++){
         for(j = 0; (add[i].haddress << 8 | add[i].laddress) != (__table[j].haddress << 8 | __table[j].laddress) && _memcmp(&add[i], &__table[j], sizeof(unit)) && j < tSize; j++){}
         if (j == tSize && check(add[i]) == 0){
@@ -124,12 +142,16 @@ int add_units(int _size, unit* add){
     }
 
     qsort(__table, tSize, sizeof(unit), cmp_unit);
+    xSemaphoreGive(table_semaphore);
 
     return tSize;
 }
 
 int remove_units(int _size, unit* remove){
     int i = 0, j = 0;
+    
+    xSemaphoreTake(table_semaphore, portMAX_DELAY);
+    
     for (;i < _size; i++){
         if (FLAGS.REMOVE_WITH_ADDRESS){
             for(; (__table[j].haddress << 8 | __table[j].laddress) != (remove[i].haddress << 8 | remove[i].laddress) && j < tSize; j++){}
@@ -141,7 +163,8 @@ int remove_units(int _size, unit* remove){
                     j < tSize; j++){}
         } else {
             for(j = 0; _memcmp(&remove[i], &__table[j], sizeof(unit)) && j < tSize; j++){}
-    }        if (j != tSize){
+        }
+        if (j != tSize){
             __table[j] = __table[--tSize];
             __table[tSize] = null;
         }
@@ -149,17 +172,24 @@ int remove_units(int _size, unit* remove){
 
     qsort(__table, tSize, sizeof(unit), cmp_unit);
 
+    xSemaphoreGive(table_semaphore);
+
     return tSize;
 }
 
 int update_units(int _size, unit* update){
     int i = 0, j = 0;
+
+    xSemaphoreTake(table_semaphore, portMAX_DELAY);
+    
     for(; i < _size; i++){
         for(j = 0; (__table[j].haddress << 8 | __table[j].laddress) != (update[i].haddress << 8 | update[i].laddress) && j < tSize; j++){}
         if (j < tSize && check(update[i]) == 0){
             __table[j] = update[i];
         }
     }
+
+    xSemaphoreGive(table_semaphore);
 
     return tSize;
 }
