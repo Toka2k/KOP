@@ -38,12 +38,19 @@
 #define HEADER_SIZE (sizeof(packed_header))
 #define PAYLOAD_SIZE (PACKET_SIZE - HEADER_SIZE)
 
+// Address table
 #define ADDRESS_BITS (14)
 #define MAX_TABLE_SIZE (1 << ADDRESS_BITS)
 #define TABLE_SIZE __table_size.size
 
+// Timers
 #define HOLD_DOWN_S (15)
+#define FULL_UPDATE_PERIOD_S (20)
+#define COUNTER_PERIOD_S (15)
+#define COUNTER_NEIGHBOUR_PERIOD_S (5)
+#define HELLO_PERIOD_S (8)
 
+// Helper macro for units
 #define UNIT_COST(x) (x.hcost << 10 | x.cost << 2 | x.lcost)
 #define UNIT_NEXTHOP(x) (x.hnextHop << 8 | x.lnextHop)
 #define UNIT_ADDRESS(x) (x.haddress << 8 | x.laddress)

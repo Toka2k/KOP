@@ -20,6 +20,7 @@ extern addr __my_address;
 extern int* routers;
 extern xSemaphoreHandle table_semaphore;
 
+char* print_table(short page);
 void init_address_table();
 unsigned int check(unit check);
 int _memcmp(const void* buf1, const void* buf2, int count);

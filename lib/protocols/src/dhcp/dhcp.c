@@ -21,18 +21,8 @@ void DHCP_LEASE_TASK(void* pvParameters){
     vTaskDelete(NULL);
 }
 
-short int get_unused_address(){
-    addr a = {0};
-    unit result;
-
-    for(short int i = 1; i < MAX_TABLE_SIZE; i++){
-        a.address = i;
-        result = find_unit(a);
-        if(_memcmp(&result, &null, sizeof(unit)) == 0){
-            return a.address;
-        }
-    }
-    return 0;
+short get_unused_address(){
+    return UNIT_ADDRESS(__table[TABLE_SIZE - 1]) + 1;
 }
 
 int DHCP_REQ(){

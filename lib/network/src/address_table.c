@@ -14,6 +14,60 @@ xSemaphoreHandle table_semaphore;
 // MANAGE HIGHEST ADDRESS WITH DHCP
 addr __my_address = {0};
 
+char* print_table(short page){
+    char* text = malloc((21 * 2 + 1) * 30);
+    if (text == NULL){
+        return NULL;
+    }
+
+    // 30 bytes for each row
+    xSemaphoreTake(table_semaphore, portMAX_DELAY);
+    sprintf(text, "+---------+------+----------+\n");
+    sprintf(text, "%s| Address | Cost | Next Hop |\n", text);
+    sprintf(text, "%s+---------+------+----------+\n", text);
+    for(int i = 0; i < 20 && page * 20 + i < TABLE_SIZE; i++){
+        if (UNIT_ADDRESS(__table[i + page * 20]) < 10){
+            sprintf(text, "%s|       %d |", text, UNIT_ADDRESS(__table[i + page * 20]));
+        } else if (UNIT_ADDRESS(__table[i + page * 20]) < 100){
+            sprintf(text, "%s|      %d |", text, UNIT_ADDRESS(__table[i + page * 20]));
+        } else if (UNIT_ADDRESS(__table[i + page * 20]) < 1000){
+            sprintf(text, "%s|     %d |", text, UNIT_ADDRESS(__table[i + page * 20]));
+        } else if (UNIT_ADDRESS(__table[i + page * 20]) < 10000){
+            sprintf(text, "%s|    %d |", text, UNIT_ADDRESS(__table[i + page * 20]));
+        } else {
+            sprintf(text, "%s|   %d |", text, UNIT_ADDRESS(__table[i + page * 20]));
+        }
+
+        if (UNIT_COST(__table[i + page * 20]) < 10){
+            sprintf(text, "%s    %d ", text, UNIT_COST(__table[i + page * 20]));
+        } else if (UNIT_COST(__table[i + page * 20]) < 100){
+            sprintf(text, "%s   %d ", text, UNIT_COST(__table[i + page * 20]));
+        } else if (UNIT_COST(__table[i + page * 20]) < 1000){
+            sprintf(text, "%s  %d ", text, UNIT_COST(__table[i + page * 20]));
+        } else {
+            sprintf(text, "%s %d ", text, UNIT_COST(__table[i + page * 20]));
+        }
+    
+        if (UNIT_NEXTHOP(__table[i + page * 20]) < 10){
+            sprintf(text, "%s|        %d |", text, UNIT_NEXTHOP(__table[i + page * 20]));
+        } else if (UNIT_NEXTHOP(__table[i + page * 20]) < 100){
+            sprintf(text, "%s|       %d |", text, UNIT_NEXTHOP(__table[i + page * 20]));
+        } else if (UNIT_NEXTHOP(__table[i + page * 20]) < 1000){
+            sprintf(text, "%s|      %d |", text, UNIT_NEXTHOP(__table[i + page * 20]));
+        } else if (UNIT_NEXTHOP(__table[i + page * 20]) < 10000){
+            sprintf(text, "%s|     %d |", text, UNIT_NEXTHOP(__table[i + page * 20]));
+        } else {
+            sprintf(text, "%s|    %d |", text, UNIT_NEXTHOP(__table[i + page * 20]));
+        }
+        
+        sprintf(text, "%s\n+---------+------+----------+\n", text);
+    }
+
+    xSemaphoreGive(table_semaphore);
+
+    return text;
+}
+
 void init_address_table(){
     __table = malloc(sizeof(unit) * MAX_TABLE_SIZE);
     routers = malloc(sizeof(int) * (1 << (ADDRESS_BITS - 5)));
