@@ -10,20 +10,16 @@ void setup() {
     delay(500);
 
     radio_init();
-    init_address_table();
-    
-    init_network();
-    init_updates();
 
-    DHCP_REQ();
-    int timer = millis();
-    while(millis() - timer < 5000){if (__my_address.address != 0) { break; }}
-    if(__my_address.address == 0){
-        __my_address.address = 1;
-    }
+    init_address_table();
+    init_network();
+    
+    __my_address.address = 1;
     unit test = initialize_unit(__my_address.address,0,__my_address.address);
     add_unit(test);
     Serial.printf("__my_address: %d\n", __my_address.address);
+    
+    init_updates();
 
     pinMode(2, OUTPUT);
     
@@ -33,9 +29,22 @@ void setup() {
 
 void loop() {
     char* table = print_table(0);
-    Serial.printf(table);
-    Serial.printf("%d\n", TABLE_SIZE);
-    free(table);
+    const char* text = "Hello world from node 2!";
+    addr broadcast = {LOCAL_BROADCAST};
+
+    switch(__my_address.address){
+        case 1:
+            debug = 1;
+            Serial.printf(table);
+            free(table);
+            break;
+        case 2:
+            route(broadcast, strlen(text), P_EXAMPLE, (byte*)text);
+            break;
+        case 3:
+            debug = 1;
+            break;
+    }
 
     vTaskDelay(10000);
 }

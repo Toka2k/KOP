@@ -24,6 +24,7 @@
 #define P_UPDATE    (0x1)
 #define P_ARP       (0x2)
 #define P_DHCP      (0x3)
+#define P_EXAMPLE   (0x4)
 
 // 1<<14 / num of units per packet
 #define MAX_ITERATIONS (283)
@@ -44,11 +45,11 @@
 #define TABLE_SIZE __table_size.size
 
 // Timers
-#define HOLD_DOWN_S (15)
+#define HOLD_DOWN_S (30)
 #define FULL_UPDATE_PERIOD_S (20)
 #define COUNTER_PERIOD_S (15)
 #define COUNTER_NEIGHBOUR_PERIOD_S (5)
-#define HELLO_PERIOD_S (8)
+#define HELLO_PERIOD_S (7)
 
 // Helper macro for units
 #define UNIT_COST(x) (x.hcost << 10 | x.cost << 2 | x.lcost)

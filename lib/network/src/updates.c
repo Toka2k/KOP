@@ -19,7 +19,6 @@ held_entry* held_down = NULL;
 unsigned short size_held_down = 0;
 
 xSemaphoreHandle trigger_update;
-xSemaphoreHandle neighbour_semaphore;
 xSemaphoreHandle timers_semaphore;
 xSemaphoreHandle changed_semaphore;
 
@@ -32,16 +31,14 @@ void init_updates(){
     memset(missed_msg, 0, sizeof(byte) * MAX_TABLE_SIZE);
 
     trigger_update = xSemaphoreCreateBinary();
-    neighbour_semaphore = xSemaphoreCreateBinary();
     timers_semaphore = xSemaphoreCreateBinary();
     changed_semaphore = xSemaphoreCreateBinary();
 
     xSemaphoreGive(trigger_update);
-    xSemaphoreGive(neighbour_semaphore);
     xSemaphoreGive(timers_semaphore);
     xSemaphoreGive(changed_semaphore);
 
-    xTaskCreate(increment_counter, "FULL UPDATE COUNTER", 4096, NULL, 2, NULL);
+    //xTaskCreate(increment_counter, "FULL UPDATE COUNTER", 4096, NULL, 2, NULL);
     xTaskCreate(increment_neighbour_counter, "TRIGGER UPDATE COUNTER", 4096, NULL, 2, NULL);
     xTaskCreate(full_update_task, "FULL UPDATE TASK", 4096, NULL, 2, NULL);
     xTaskCreate(trigger_update_task, "TRIGGER UPDATE TASK", 4096, NULL, 2, NULL);
@@ -66,7 +63,8 @@ int process_update(packet* p){
     for (byte i = 0; i < iterations; i++){
         unsigned short base = 4 + i * 4;
         address.address = (p->data[base] | p->data[base + 1] << 8) & 0x3fff;
-        cost = 1 + (p->data[base + 2] | p->data[base + 3] << 8) & 0xfff;
+        unsigned short raw = (p->data[base + 2] | (p->data[base + 3] << 8)) & 0xfff;
+        cost = (raw >= 0xfff) ? 0xfff : raw + 1;
         unit result = find_unit(address);
         
         unsigned short j;
@@ -98,6 +96,22 @@ int process_update(packet* p){
             }
         }
 
+        unsigned short current_next_hop = (result.hnextHop << 8 | result.lnextHop);
+
+        if (current_next_hop == uh.mac_s) {
+            if (cost >= 0xfff) {
+                invalidate_routes(address);
+            } else {
+                to_add[i] = initialize_unit(address.address, cost, uh.mac_s);
+
+                xSemaphoreTake(changed_semaphore, portMAX_DELAY);
+                changed[address.address / 32] |= 1 << (address.address % 32);
+                xSemaphoreGive(changed_semaphore);
+            }
+
+            continue;
+        }
+        
         if (address.address == __my_address.address){
             continue;
         } else if (_memcmp(&result, &null, sizeof(unit)) == 0 && cost < 0xfff){
@@ -112,17 +126,10 @@ int process_update(packet* p){
             xSemaphoreTake(changed_semaphore, portMAX_DELAY);
             changed[address.address / 32] |= 1 << address.address % 32;
             xSemaphoreGive(changed_semaphore);
-        } else if ((result.hnextHop << 8 | result.lnextHop) != uh.mac_s && cost < UNIT_COST(result)){
-            to_add[i] = initialize_unit(address.address, cost, uh.mac_s);
-            
-            xSemaphoreTake(changed_semaphore, portMAX_DELAY);
-            changed[address.address / 32] |= 1 << address.address % 32;
-            xSemaphoreGive(changed_semaphore);
         } else { continue; }
-        
-        mark_route_refreshed(address);
     }
 
+    mark_route_refreshed((addr){uh.mac_s});
     add_units(iterations, to_add);
     free(to_add);
 
@@ -338,7 +345,7 @@ void hello(void* pvParameters){
     addr a = {LOCAL_BROADCAST};
     for(;;){
         ECHO_REQ(a);
-        vTaskDelay(pdMS_TO_TICKS(8000));
+        vTaskDelay(pdMS_TO_TICKS(HELLO_PERIOD_S * 1000));
     }
 }
 
@@ -356,7 +363,7 @@ void increment_neighbour_counter(void* pvParameters){
         xSemaphoreGive(neighbour_semaphore);
 
         xSemaphoreGive(trigger_update);
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(COUNTER_NEIGHBOUR_PERIOD_S * 1000));
     }
 }
 
@@ -378,7 +385,7 @@ void increment_counter(void* pvParameters){
             missed_msg[UNIT_ADDRESS(__table[i])] += 1;
             xSemaphoreGive(neighbour_semaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(20000));
+        vTaskDelay(pdMS_TO_TICKS(COUNTER_PERIOD_S * 1000));
     }
 }
 
@@ -455,7 +462,7 @@ void full_update_task(void* pvParameters){
             
             vTaskDelay(pdMS_TO_TICKS(random() % 150 + 50));
         }
-        vTaskDelay(pdMS_TO_TICKS(20000));
+        vTaskDelay(pdMS_TO_TICKS(FULL_UPDATE_PERIOD_S * 1000));
     }
 }
 

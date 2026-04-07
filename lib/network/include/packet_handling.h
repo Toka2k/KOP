@@ -13,6 +13,7 @@ extern "C" {
 extern int (*protocols[PROTOCOLS])(packet* p);
 
 extern byte* my_seqnum, * neighbour_seqnum;
+extern byte debug;
 
 extern addr* neighbours;
 extern unsigned short neighbours_size;
@@ -25,6 +26,7 @@ extern xSemaphoreHandle radio_mutex;
 extern QueueHandle_t to_process_queue;
 extern QueueHandle_t to_send_queue;
 
+void _print(const char* text);
 void init_zero(void* ptr, int ptr_len, int type_size);
 int get_hw_flags();
 unsigned short find_neighbour(addr neighbour);

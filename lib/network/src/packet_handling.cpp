@@ -4,8 +4,10 @@
 #include <driver-al.h>
 
 static int hw_flags = 0;
+byte debug = 0;
 
 byte* my_seqnum, * neighbour_seqnum;
+xSemaphoreHandle neighbour_semaphore;
 
 addr* neighbours;
 unsigned short neighbours_size = 0;
@@ -13,6 +15,10 @@ unsigned short neighbours_size = 0;
 // First set of magic numbers, is for hosts
 // Second set of magic numbers, is for routers
 byte secret[2][SECRET_COUNT] = {{19},{11}};
+
+void _print(const char* text){
+    Serial.println(text);
+}
 
 void init_zero(void* ptr, int ptr_len, int type_size){
     for(int i = 0; i < ptr_len * type_size; i++){
@@ -193,13 +199,16 @@ void Receive(void* pvParameters){
 
         unpacked_header uh = UNPACK_HEADER(p.h);
 
-        Serial.println("\nRECEIVED");
-        Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
-        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%02X\n", uh.length, uh.protocol_id, p.h.hmac[0] <<  8 | p.h.hmac[1]); 
-        for (int i = 0; i < p.h.length; i++){
-            Serial.printf("0x%02X ", p.data[i]);
+        if(debug){
+            Serial.println("\nRECEIVED");
+            Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
+            Serial.printf("length: %d, protocol_id: %d, hmac: 0x%02X\n", uh.length, uh.protocol_id, p.h.hmac[0] <<  8 | p.h.hmac[1]); 
+            for (int i = 0; i < p.h.length; i++){
+                Serial.printf("0x%02X ", p.data[i]);
+            }
+            Serial.println("\n==============");
         }
-        Serial.println("\n==============");
+        
 
         //compare hmac
         if (((p.h.hmac[0] << 8) + p.h.hmac[1]) != HASH_PH(p.h)){
@@ -215,7 +224,7 @@ void Receive(void* pvParameters){
         }
         
         unit res = find_unit((addr){uh.mac_s});
-        if (_memcmp(&res, &null, sizeof(unit)) == 0 || UNIT_COST(res) <= 0xfff){
+        if (_memcmp(&res, &null, sizeof(unit)) == 0){
             FLAGS.UPDATE_WHEN_ADD = 1;
             add_unit(initialize_unit(uh.mac_s, 1, uh.mac_s));
         }
@@ -241,14 +250,16 @@ void Transmit(void* pvParameters){
         xSemaphoreTake(radio_mutex, portMAX_DELAY);
 
         unpacked_header uh = UNPACK_HEADER(p.h);
-        
-        Serial.println("\nTRANSMITED");
-        Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
-        Serial.printf("length: %d, protocol_id: %d, hmac: 0x%02X\n", uh.length, uh.protocol_id, p.h.hmac[0] <<  8 | p.h.hmac[1]); 
-        for (int i = 0; i < p.h.length; i++){
-            Serial.printf("0x%02X ", p.data[i]);
+
+        if(debug){
+            Serial.println("\nTRANSMITED");
+            Serial.printf("mac_d: 0x%02X \tmac_s: 0x%02X\nnet_d: 0x%02X \tnet_s: 0x%02X\n", uh.mac_d, uh.mac_s, uh.net_d, uh.net_s);
+            Serial.printf("length: %d, protocol_id: %d, hmac: 0x%02X\n", uh.length, uh.protocol_id, p.h.hmac[0] <<  8 | p.h.hmac[1]); 
+            for (int i = 0; i < p.h.length; i++){
+                Serial.printf("0x%02X ", p.data[i]);
+            }
+            Serial.println("\n==============");
         }
-        Serial.println("\n==============");
 
         p.h.seqnum = track_seqnums(p.h);
 
@@ -265,6 +276,8 @@ void Transmit(void* pvParameters){
 }
 
 void process_packet(void* pvParameters){
+    byte _protocols[] = {P_ARP, P_DHCP, P_EXAMPLE, P_UPDATE, 0};
+    byte _protocols_len = strlen((char*) _protocols);
     packet p;
     for (;;){
         xQueueReceive(to_process_queue, &p, portMAX_DELAY);
@@ -293,7 +306,13 @@ void process_packet(void* pvParameters){
             xQueueSend(to_send_queue, &p, portMAX_DELAY);
             hw_flags &= SUCCESS;
         } else {
+            int i;
+            for (i = 0; i < _protocols_len && _protocols[i] != p.h.protocol_id; i++){}
             // Proccessing packets
+            if (i == _protocols_len){
+                Serial.printf("Unknown protocol: %d", p.h.protocol_id);
+                continue;
+            }
             protocols[p.h.protocol_id](&p);
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -307,6 +326,9 @@ void process_packet(void* pvParameters){
 void init_network(){
     radio_mutex = xSemaphoreCreateBinary();
     xSemaphoreGive(radio_mutex);
+
+    neighbour_semaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(neighbour_semaphore);
 
     received_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);
     to_process_queue = xQueueCreate(MAX_STORED_PACKETS, PACKET_SIZE);

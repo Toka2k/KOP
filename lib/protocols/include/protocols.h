@@ -6,6 +6,7 @@
 
 #include <dhcp/dhcp.h>
 #include <arp/arp.h>
+#include <example.h>
 #include <updates.h>
 
 #ifdef __cplusplus
